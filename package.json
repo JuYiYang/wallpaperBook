@@ -1,0 +1,25 @@
+{
+  "name": "wallserver",
+  "version": "0.0.1",
+  "description": "this is a server",
+  "main": "index.js",
+  "scripts": {
+    "test": "/"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://gitlab.com/mebius/server.git"
+  },
+  "keywords": [
+    "server"
+  ],
+  "author": "mebius",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://gitlab.com/mebius/server/issues"
+  },
+  "homepage": "https://gitlab.com/mebius/server#readme",
+  "dependencies": {
+    "express": "^4.19.2"
+  }
+}
