@@ -5,6 +5,13 @@ const config = require("./config");
 const bodyParser = require("body-parser");
 
 const app = express();
+const { Account, Login, Role, Collect, Like } = require("./router/index");
+
+const {
+  responseMiddleware,
+  crossDomainMiddlewar,
+  authenticateMiddleware,
+} = require("./utils/middlewares");
 
 app.use(bodyParser.json());
 // 自定义中间件
