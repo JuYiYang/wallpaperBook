@@ -9,7 +9,8 @@ const Post = Parse.Object.extend("Post");
 const PostWall = Parse.Object.extend("PostWall");
 const PostContentInfo = Parse.Object.extend("PostContent");
 
-Router.post("/post", (req, res) => {});
+Router.post("/getPost", (req, res) => {});
+
 Router.post("/creatdPost", multiple, async (req, res) => {
   if (
     (!req.files || !req.files.length) &&
@@ -19,6 +20,7 @@ Router.post("/creatdPost", multiple, async (req, res) => {
   }
 
   try {
+    await createPost(req.files, req.body.content, req.user.id);
     res.customSend("success");
   } catch (err) {
     res.customErrorSend(err);
