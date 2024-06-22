@@ -1,0 +1,18 @@
+{
+  "web": {
+    "client_id": "86202189237-oclofjgougd3222norsd4kj1ckd1nd8p.apps.googleusercontent.com",
+    "project_id": "wallpaper-book",
+    "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+    "token_uri": "https://oauth2.googleapis.com/token",
+    "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+    "client_secret": "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",
+    "redirect_uris": [
+      "https://wallpaper-book.firebaseapp.com/__/auth/handler"
+    ],
+    "javascript_origins": [
+      "http://localhost",
+      "http://localhost:5000",
+      "https://wallpaper-book.firebaseapp.com"
+    ]
+  }
+}

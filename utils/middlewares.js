@@ -28,7 +28,6 @@ exports.crossDomainMiddlewar = (req, res, next) => {
 // 身份验证中间件
 
 exports.authenticateMiddleware = (req, res, next) => {
-  console.log(req.headers);
   const sessionToken = req.headers.authorization;
   if (!sessionToken) {
     return res.customErrorSend("Invalid session token", 401);

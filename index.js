@@ -1,11 +1,14 @@
 const express = require("express");
+const path = require("path");
+
 const ParseServer = require("parse-server").ParseServer;
-const config = require("./config");
+const config = require("./config/config");
 
 const bodyParser = require("body-parser");
 
 const app = express();
-const { Account, Login, Role, Collect, Like } = require("./router/index");
+app.use("/static", express.static(path.join(__dirname, "upload", "images")));
+const { Account, Login, Role, Post } = require("./router/index");
 
 const {
   responseMiddleware,
@@ -27,8 +30,8 @@ app.use("/parse", api.app);
 app.use("/account", Login);
 app.use("/account", authenticateMiddleware, Account);
 app.use("/role", authenticateMiddleware, Role);
-app.use("/collect", authenticateMiddleware, Collect);
-app.use("/like", authenticateMiddleware, Like);
+app.use("/Post", authenticateMiddleware, Post);
+// app.use("/like", authenticateMiddleware, Like);
 
 app.listen(config.prot, () => {
   console.log(`${config.prot}已启动`);
