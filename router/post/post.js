@@ -1,8 +1,5 @@
-// const { nanoid } = require("nanoid");
 const { multiple } = require("../../utils//saveFile");
-const multer = require("multer");
 const express = require("express");
-const { masterKey } = require("../../config/config");
 const Router = express.Router();
 
 const Post = Parse.Object.extend("Post");
