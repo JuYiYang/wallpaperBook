@@ -24,6 +24,66 @@ Router.post("/creatdPost", multiple, async (req, res) => {
   }
 });
 
+Router.get("/getAllPost", async (req, res) => {
+  // 计算跳过的记录数和限制返回的记录数
+  const { page = 1, pageSize = 10 } = req.query;
+
+  // 计算需要跳过的数据量
+  const skip = (page - 1) * pageSize;
+
+  // 创建收藏夹查询
+  const postQuery = new Parse.Query(Post);
+  postQuery.limit(parseInt(pageSize));
+  postQuery.skip(skip);
+  const postResult = await postQuery.find();
+
+  let postRecords = [];
+  for (let i = 0; i < postResult.length; i++) {
+    let singlePost = postResult[i];
+    let wallId = singlePost.get("wallId") || "";
+    // 被点赞内容的 ID
+    let contentId = singlePost.get("contentId");
+
+    const wallQuery = new Parse.Query(PostWall);
+    wallQuery.containedIn("objectId", wallId.split(","));
+
+    const contentQuery = new Parse.Query(PostContentInfo);
+    contentQuery.equalTo("objectId", contentId);
+
+    const userQuery = new Parse.Query(Parse.User);
+    let a = await singlePost.get("creator");
+    userQuery.equalTo("objectId", a);
+
+    let content = await contentQuery.find();
+    let walls = await wallQuery.find();
+    let user = await userQuery.first({ useMasterKey: true });
+    let userWalls = [];
+    for (let j = 0; j < walls.length; j++) {
+      userWalls.push({
+        id: walls[j].id,
+        createdAt: walls[j].get("createdAt"),
+        url: walls[j].get("imageUrl"),
+      });
+    }
+    postRecords.push({
+      id: singlePost.id,
+      createdAt: singlePost.get("createdAt"),
+      content: content[0].get("content"),
+      walls: userWalls,
+      userInfo: {
+        avatar: user.get("avatar"),
+        username: user.get("nickName") || user.get("username"),
+        id: user.id,
+      },
+      like: Math.floor(Math.random() * 100 + 1),
+      collet: Math.floor(Math.random() * 50 + 1),
+      comment: Math.floor(Math.random() * 10 + 1),
+    });
+  }
+
+  res.customSend(postRecords);
+});
+
 const createPost = async (images, text, creatorId) => {
   const imageIds = [];
   for (const image of images) {
