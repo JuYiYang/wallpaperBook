@@ -25,7 +25,7 @@ Router.post(
       const query = new Parse.Query(DownloadRecord);
       query.descending("downloadTime");
       query.limit(1);
-      const latestDownload = await query.first();
+      const latestDownload = await query.first({ useMasterKey: true });
       const currentTime = dayjs().valueOf();
       let downloadType = 1; // 1 正常下载 ，2，三十分钟重复下载不扣除次数，
       if (latestDownload) {
