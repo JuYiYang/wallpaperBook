@@ -28,7 +28,7 @@ const api = new ParseServer(config);
 app.use("/parse", api.app);
 
 app.use("/account", Login);
-app.use("/account", authenticateMiddleware, Account);
+app.use("/account", Account);
 app.use("/role", authenticateMiddleware, Role);
 app.use("/Post", authenticateMiddleware, Post);
 // app.use("/like", authenticateMiddleware, Like);

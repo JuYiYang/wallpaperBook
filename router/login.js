@@ -3,6 +3,7 @@ const Parse = require("parse/node");
 
 const Joi = require("joi");
 const { validateParams } = require("../utils/middlewares");
+const { baseOption, transport } = require("../utils/sendEmail");
 const Router = express.Router();
 Parse.User.enableUnsafeCurrentUser();
 
@@ -34,6 +35,7 @@ Router.post(
       email: Joi.string().email().required(),
     }).unknown(true)
   ),
+
   async (req, res) => {
     const query = req.body;
     // 注册
@@ -52,4 +54,15 @@ Router.post(
   }
 );
 
+Router.post("/sendLoginLink", async (req, res) => {
+  transport.sendMail(baseOption, (err, info) => {
+    if (err) {
+      //执行错误
+      res.customErrorSend(err);
+    } else {
+      res.customSend();
+    }
+    transport.close(); // 如果没用，则关闭连接池
+  });
+});
 module.exports = Router;
