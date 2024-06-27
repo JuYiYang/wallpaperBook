@@ -3,7 +3,7 @@ const Account = require("./account");
 const Login = require("./login");
 
 const Role = require("./role");
-const Post = require("./post/post");
+const Post = require("./post/index");
 // const Collect = require("./wall/collect");
 
 // const Like = require("./wall/like");

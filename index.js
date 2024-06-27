@@ -8,8 +8,8 @@ const bodyParser = require("body-parser");
 
 const app = express();
 app.use("/static", express.static(path.join(__dirname, "upload", "images")));
-const { Account, Login, Role, Post } = require("./router/index");
 
+const { Account, Login, Role, Post } = require("./router/index");
 const {
   responseMiddleware,
   crossDomainMiddlewar,
@@ -32,7 +32,6 @@ app.use("/account", authenticateMiddleware, Account);
 app.use("/role", authenticateMiddleware, Role);
 app.use("/Post", authenticateMiddleware, Post);
 // app.use("/like", authenticateMiddleware, Like);
-
 app.listen(config.prot, () => {
   console.log(`${config.prot}已启动`);
 });

@@ -9,60 +9,73 @@ const PostWall = Parse.Object.extend("PostWall");
 const PostContentInfo = Parse.Object.extend("PostContent");
 
 // 创建帖子
-Router.post("/creatdPost", multiple, async (req, res) => {
-  if (
-    (!req.files || !req.files.length) &&
-    (!req.body.content || !req.body.content.length)
-  ) {
-    return res.customErrorSend("缺少必要参数！");
-  }
+Router.post(
+  "/creatdPost",
+  multiple,
 
-  try {
-    await createPost(
-      req.files,
-      req.body.content,
-      req.user.id,
-      req.body.maxPostHeight
-    );
-    res.customSend("success");
-  } catch (err) {
-    res.customErrorSend(err);
+  async (req, res) => {
+    if (
+      (!req.files || !req.files.length) &&
+      (!req.body.content || !req.body.content.length)
+    ) {
+      return res.customErrorSend("缺少必要参数！");
+    }
+    try {
+      await createPost(req.files, req.user, req.body);
+      res.customSend("success");
+    } catch (err) {
+      console.log(err);
+      res.customErrorSend(err);
+    }
   }
-});
-const createPost = async (images, text, creatorId, h) => {
+);
+const createPost = async (images, user, body) => {
   const imageIds = [];
-  for (const image of images) {
+  let imageSizes = body.imageSizes ? JSON.parse(body.imageSizes) : [];
+  let maxPostHeight = 0;
+  for (let i = 0; i < images.length; i++) {
+    let image = images[i];
     const wallInfo = new PostWall();
+
+    if (imageSizes.length)
+      maxPostHeight = Math.max(maxPostHeight, imageSizes[i].height);
     let filePath = "http://192.168.1.106:1337" + "/static/" + image.filename;
     // 设置图片信息
     wallInfo.set("imageName", image.filename); // 图片名称包含后缀
     wallInfo.set("imageUrl", filePath); // 图片可访问路径
     wallInfo.set("imageSize", image.size); // 字节大小
-    wallInfo.set("imageDimensions", "0x0"); // 图片的尺寸 200x200 保留
+    wallInfo.set(
+      "imageDimensions",
+      imageSizes.length
+        ? `${imageSizes[i].width}x${imageSizes[i].height}`
+        : "0x0"
+    ); // 图片的尺寸 200x200 保留
     wallInfo.set("mimetype", image.mimetype); // 图片类型
     wallInfo.set("type", 1); // 图片展示类型（壁纸，表情包，头像） 保留
-    wallInfo.set("creator", creatorId);
+    wallInfo.set("creator", user.id);
     const saveImageInfo = await wallInfo.save(null, { useMasterKey: true });
     imageIds.push(saveImageInfo.id); // 创建人
   }
   const post = new Post();
-
+  const text = body.content;
   if (text && text.length) {
     const postContentInfo = new PostContentInfo();
     postContentInfo.set("content", text);
-    postContentInfo.set("creator", creatorId);
+    postContentInfo.set("creator", user.id);
     const contentInfo = await postContentInfo.save(null, {
       useMasterKey: true,
     });
     post.set("contentId", contentInfo.id);
   }
+
   post.set("wallId", imageIds.join(","));
-  post.set("maxPostHeight", h);
-  post.set("creator", creatorId);
+  post.set("maxPostHeight", maxPostHeight + "");
+  post.set("creator", user.id);
   post.set("likeCount", 0);
   post.set("commentCount", 0);
-  console.log(post);
-  // 可以添加其他属性，如发布时间等
+  post.set("creatorAvatar", user.get("avatar"));
+  post.set("creatorName", user.get("username"));
+
   await post.save(null, { useMasterKey: true });
 };
 
@@ -86,27 +99,21 @@ Router.get("/getAllPost", async (req, res) => {
     let wallId = singlePost.get("wallId") || "";
     // 被点赞内容的 ID
     let contentId = singlePost.get("contentId");
-
+    // 图
     const wallQuery = new Parse.Query(PostWall);
     wallQuery.containedIn("objectId", wallId.split(","));
-
+    // 文
     const contentQuery = new Parse.Query(PostContentInfo);
     contentQuery.equalTo("objectId", contentId);
 
-    const userQuery = new Parse.Query(Parse.User);
-    let a = await singlePost.get("creator");
-    userQuery.equalTo("objectId", a);
-
+    // 当前用户是否点赞
     const postLike = Parse.Object.extend("PostLike");
     const postLikeQuery = new Parse.Query(postLike);
-    const totalLikesQuery = new Parse.Query("PostLike");
     postLikeQuery.equalTo("creatorId", req.user.id);
     postLikeQuery.equalTo("postId", singlePost.id);
-    totalLikesQuery.equalTo("postId", singlePost.id);
 
     let content = await contentQuery.first({ useMasterKey: true });
     let walls = await wallQuery.find({ useMasterKey: true });
-    let user = await userQuery.first({ useMasterKey: true });
     let likes = await postLikeQuery.find({ useMasterKey: true });
     let userWalls = [];
     for (let j = 0; j < walls.length; j++) {
@@ -122,18 +129,16 @@ Router.get("/getAllPost", async (req, res) => {
       createdAt: singlePost.get("createdAt"),
       like: singlePost.get("likeCount") || 0,
       maxPostHeight: singlePost.get("maxPostHeight"),
-      content: content.get("content"),
+      content: content?.get("content"),
       walls: userWalls,
       isLike: !!likes.length,
-      userInfo: user
-        ? {
-            avatar: user.get("avatar"),
-            username: user.get("nickName") || user.get("username"),
-            id: user.id,
-          }
-        : {},
+      userInfo: {
+        avatar: singlePost.get("creatorAvatar"),
+        username: singlePost.get("creatorName"),
+        id: singlePost.get("creator"),
+      },
       collet: Math.floor(Math.random() * 50 + 1),
-      comment: Math.floor(Math.random() * 10 + 1),
+      comment: singlePost.get("commentCount") || 0,
     });
   }
 
@@ -141,12 +146,12 @@ Router.get("/getAllPost", async (req, res) => {
     pageSize,
     page: skip,
     total: await postQuery.count({ useMasterKey: true }),
-    records: postRecords,
+    records: postRecords.reverse(),
   });
 });
-// 点赞帖子
+
 Router.get(
-  "/likePost",
+  "/getSinglePostInfo",
   validateParams(
     Joi.object({
       id: Joi.required(),
@@ -155,101 +160,46 @@ Router.get(
   async (req, res) => {
     try {
       const postQuery = new Parse.Query(Post);
+      const singlePost = await postQuery.get(req.query.id);
 
-      // 查找帖子是否存在
-      await postQuery.get(req.query.id, {
-        useMasterKey: true,
+      let wallId = singlePost.get("wallId") || "";
+      // 被点赞内容的 ID
+      let contentId = singlePost.get("contentId");
+
+      const wallQuery = new Parse.Query(PostWall);
+      wallQuery.containedIn("objectId", wallId.split(","));
+
+      const contentQuery = new Parse.Query(PostContentInfo);
+      contentQuery.equalTo("objectId", contentId);
+
+      let content = await contentQuery.first({ useMasterKey: true });
+      let walls = await wallQuery.find({ useMasterKey: true });
+
+      res.customSend({
+        id: singlePost.id,
+        userInfo: {
+          avatar: singlePost.get("creatorAvatar"),
+          username: singlePost.get("creatorName"),
+          id: singlePost.get("creator"),
+        },
+        colletCount: Math.floor(Math.random() * 50 + 1),
+        commentCount: singlePost.get("commentCount") || 0,
+        content: content?.get("content"),
+        likeCount: singlePost.get("likeCount") || 0,
+        createdAt: singlePost.get("createdAt"),
+        walls: walls.map((item) => {
+          return {
+            id: item.id,
+            createdAt: item.get("createdAt"),
+            url: item.get("imageUrl"),
+          };
+        }),
       });
-      const postLike = Parse.Object.extend("PostLike");
-      const query = new Parse.Query(postLike);
-      query.equalTo("creatorId", req.user.id);
-      query.equalTo("postId", req.query.id);
-      const reocrds = await query.find({ useMasterKey: true });
-      const post = new Post();
-
-      if (reocrds.length > 0) {
-        await Parse.Object.destroyAll(reocrds);
-        post.increment("likeCount", -1);
-        await post.save(null, { useMasterKey: true });
-        res.customSend("cancel");
-        return;
-      }
-
-      const like = new postLike();
-      like.set("creatorId", req.user.id);
-      like.set("username", req.user.get("username"));
-      like.set("avatar", req.user.get("avatar"));
-      like.set("postId", req.query.id);
-      post.increment("likeCount");
-      await like.save(null, { useMasterKey: true });
-      await post.save(null, { useMasterKey: true });
-      res.customSend("Success!");
     } catch (error) {
-      res.customErrorSend(error.message, error.code);
-    }
-  }
-);
-// 评论帖子
-Router.post(
-  "/addComment",
-  validateParams(
-    Joi.object({
-      comment: Joi.required(),
-      parentId: Joi.required(),
-    })
-  ),
-  async (req, res) => {
-    try {
-      const PostComment = Parse.Object.extend("PostComment");
-      const postQuery = new Parse.Query(Post);
-      const commentQuery = new Parse.Query(PostComment);
-      postQuery.equalTo("objectId", req.body.parentId);
-      commentQuery.equalTo("objectId", req.body.parentId);
-      const result = await Promise.all([
-        postQuery.find({ useMasterKey: true }),
-        commentQuery.find({ useMasterKey: true }),
-      ]);
-      if (!result[0].length && !result[1].length) {
-        return res.customErrorSend(
-          `failed. The target does not exist or has been deleted `
-        );
-      }
-      const Comment = new PostComment();
-      Comment.set("creatorId", req.user.id);
-      Comment.set("username", req.user.get("username"));
-      Comment.set("avatar", req.user.get("avatar"));
-      Comment.set("parentId", req.body.parentId);
-      Comment.set("vestIn", result[0].length ? 0 : 1); // 0 帖子 1评论
-      Comment.set("comment", req.body.comment);
-      await Comment.save(null, { useMasterKey: true });
-      res.customSend("Success!");
-    } catch (error) {
-      res.customErrorSend(error.message, error.code);
+      console.log(error);
+      res.customErrorSend(error);
     }
   }
 );
 
-Router.delete(
-  "/delPostComment",
-  validateParams(
-    Joi.object({
-      id: Joi.required(),
-    })
-  ),
-  async (req, res) => {
-    try {
-      const PostComment = Parse.Object.extend("PostComment");
-      const commentQuery = new Parse.Query(PostComment);
-      const comment = await commentQuery.get(req.body.id);
-      if (comment.get("creatorId") === req.user.id) {
-        await comment.destroy();
-        res.customSend("cancel");
-      } else {
-        res.customErrorSend("not authority");
-      }
-    } catch (error) {
-      res.customErrorSend(error.message, error.code);
-    }
-  }
-);
 module.exports = Router;
