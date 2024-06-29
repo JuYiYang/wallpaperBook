@@ -45,9 +45,9 @@ Router.post(
       Comment.set("vestIn", result[0] ? 0 : 1); // 0 帖子 1评论
       Comment.set("comment", req.body.comment);
       singlePost.increment("commentCount");
-      await Comment.save(null, { useMasterKey: true });
+      const afterInfo = await Comment.save(null, { useMasterKey: true });
       await singlePost.save(null, { useMasterKey: true });
-      res.customSend("Success");
+      res.customSend(afterInfo.id);
     } catch (error) {
       res.customErrorSend(error.message, error.code);
     }
@@ -89,6 +89,8 @@ Router.get(
   validateParams(
     Joi.object({
       id: Joi.required(),
+      page: Joi.any(),
+      pageSize: Joi.any(),
     })
   ),
   async (req, res) => {
@@ -108,10 +110,13 @@ Router.get(
       PostCommentQuery.limit(parseInt(pageSize));
       PostCommentQuery.skip(skip);
       PostCommentQuery.equalTo("postId", req.query.id);
+      PostCommentQuery.descending("createdAt");
+      // ascending 升序
       const PostCommentResult = await PostCommentQuery.find();
 
-      res.customSend(
-        PostCommentResult.map((item) => {
+      const total = await PostCommentQuery.count({ useMasterKey: true });
+      res.customSend({
+        records: PostCommentResult.map((item) => {
           return {
             id: item.id,
             avatar: item.get("avatar"),
@@ -119,11 +124,14 @@ Router.get(
             postId: item.get("postId"),
             username: item.get("username"),
             comment: item.get("comment"),
+            createdAt: item.get("createdAt"),
           };
-        })
-      );
+        }),
+        total,
+        nextPage: page * pageSize < total,
+      });
     } catch (error) {
-      res.customErrorSend(error);
+      res.customErrorSend(234234);
     }
   }
 );

@@ -91,6 +91,8 @@ Router.get("/getAllPost", async (req, res) => {
   const postQuery = new Parse.Query(Post);
   postQuery.limit(parseInt(pageSize));
   postQuery.skip(skip);
+
+  postQuery.descending("createdAt");
   const postResult = await postQuery.find();
 
   let postRecords = [];
@@ -141,12 +143,10 @@ Router.get("/getAllPost", async (req, res) => {
       comment: singlePost.get("commentCount") || 0,
     });
   }
-
+  const total = await postQuery.count({ useMasterKey: true });
   res.customSend({
-    pageSize,
-    page: skip,
-    total: await postQuery.count({ useMasterKey: true }),
-    records: postRecords.reverse(),
+    nextPage: page * pageSize < total,
+    records: postRecords,
   });
 });
 
@@ -171,7 +171,6 @@ Router.get(
 
       const contentQuery = new Parse.Query(PostContentInfo);
       contentQuery.equalTo("objectId", contentId);
-
       let content = await contentQuery.first({ useMasterKey: true });
       let walls = await wallQuery.find({ useMasterKey: true });
 
@@ -196,7 +195,6 @@ Router.get(
         }),
       });
     } catch (error) {
-      console.log(error);
       res.customErrorSend(error);
     }
   }
