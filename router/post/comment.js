@@ -41,6 +41,7 @@ Router.post(
       Comment.set("username", req.user.get("username"));
       Comment.set("avatar", req.user.get("avatar"));
       Comment.set("parentId", req.body.parentId);
+      Comment.set("likeCount", 0);
       Comment.set("postId", result[0] ? result[0].id : result[1].get("postId"));
       Comment.set("vestIn", result[0] ? 0 : 1); // 0 帖子 1评论
       Comment.set("comment", req.body.comment);
@@ -83,7 +84,7 @@ Router.delete(
     }
   }
 );
-
+// 查询所有的评论
 Router.get(
   "/getPostComment",
   validateParams(
@@ -111,27 +112,38 @@ Router.get(
       PostCommentQuery.skip(skip);
       PostCommentQuery.equalTo("postId", req.query.id);
       PostCommentQuery.descending("createdAt");
+      PostCommentQuery.descending("likeCount");
       // ascending 升序
       const PostCommentResult = await PostCommentQuery.find();
 
       const total = await PostCommentQuery.count({ useMasterKey: true });
+      let records = [];
+      for (let i = 0; i < PostCommentResult.length; i++) {
+        let item = PostCommentResult[i];
+        const postCommentLike = Parse.Object.extend("PostCommentLike");
+        const query = new Parse.Query(postCommentLike);
+        query.equalTo("creatorId", req.user.id);
+        query.equalTo("commentId", item.id);
+        const likeRecord = await query.find({ useMasterKey: true });
+        records.push({
+          id: item.id,
+          userLike: !!likeRecord.length,
+          avatar: item.get("avatar"),
+          parentId: item.get("parentId"),
+          postId: item.get("postId"),
+          username: item.get("username"),
+          comment: item.get("comment"),
+          likeCount: item.get("likeCount") || 0,
+          createdAt: item.get("createdAt"),
+        });
+      }
       res.customSend({
-        records: PostCommentResult.map((item) => {
-          return {
-            id: item.id,
-            avatar: item.get("avatar"),
-            parentId: item.get("parentId"),
-            postId: item.get("postId"),
-            username: item.get("username"),
-            comment: item.get("comment"),
-            createdAt: item.get("createdAt"),
-          };
-        }),
+        records,
         total,
         nextPage: page * pageSize < total,
       });
     } catch (error) {
-      res.customErrorSend(234234);
+      res.customErrorSend(error);
     }
   }
 );
