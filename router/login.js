@@ -18,6 +18,7 @@ Router.post(
   async (req, res) => {
     const query = req.body;
     try {
+      await Parse.User.logOut();
       const userLogin = await Parse.User.logIn(query.account, query.password);
       res.customSend({ token: userLogin.getSessionToken() });
     } catch (error) {
@@ -30,7 +31,6 @@ Router.post(
   "/register",
   validateParams(
     Joi.object({
-      username: Joi.string().required(),
       password: Joi.string().min(6).required(),
       email: Joi.string().email().required(),
     }).unknown(true)
@@ -40,9 +40,9 @@ Router.post(
     const query = req.body;
     // 注册
     const user = new Parse.User();
-    for (let key in query) {
-      user.set(key, query[key]);
-    }
+    user.set("email", query.email);
+    user.set("username", query.email);
+    user.set("password", query.password);
     user.set("downloadFrequency", 0);
     user.set(
       "avatar",

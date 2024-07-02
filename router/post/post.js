@@ -29,6 +29,7 @@ Router.post(
     }
   }
 );
+
 const createPost = async (images, user, body) => {
   const imageIds = [];
   let imageSizes = body.imageSizes ? JSON.parse(body.imageSizes) : [];
@@ -74,7 +75,7 @@ const createPost = async (images, user, body) => {
   post.set("likeCount", 0);
   post.set("commentCount", 0);
   post.set("creatorAvatar", user.get("avatar"));
-  post.set("creatorName", user.get("username"));
+  post.set("creatorName", user.get("nickName"));
 
   await post.save(null, { useMasterKey: true });
 };
@@ -150,6 +151,7 @@ Router.get("/getAllPost", async (req, res) => {
   });
 });
 
+// 查询帖子详情
 Router.get(
   "/getSinglePostInfo",
   validateParams(
@@ -196,6 +198,31 @@ Router.get(
       });
     } catch (error) {
       res.customErrorSend(error);
+    }
+  }
+);
+
+// 删除帖子
+Router.delete(
+  "/del",
+  validateParams(
+    Joi.object({
+      id: Joi.required(),
+    })
+  ),
+  async (req, res) => {
+    try {
+      const postQuery = new Parse.Query(Post);
+      const singlePost = await postQuery.get(req.body.id);
+
+      if (singlePost.get("creator") !== req.user.id) {
+        return res.customErrorSend("暂无权限");
+      }
+
+      await singlePost.destroy();
+      res.customSend("success");
+    } catch (error) {
+      res.customErrorSend("帖子不存在或权限不足");
     }
   }
 );

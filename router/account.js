@@ -5,12 +5,32 @@ const Joi = require("joi");
 const { validateParams } = require("../utils/middlewares");
 const Router = express.Router();
 
+// 查询用户信息
 Router.get("/info", async (req, res) => {
   const { sessionToken, className, __type, ACL, ...userInfo } =
     req.user.toJSON();
   res.customSend(userInfo);
 });
 
+// 修改用户信息
+Router.put("/info", async (req, res) => {
+  try {
+    const safeField = ["nickName", "birthday", "sex", "motto", "preference"];
+    const currentUser = Parse.User.current();
+    for (const key in req.body) {
+      let val = req.body[key];
+      if (safeField.includes(key)) {
+        currentUser.set(key, val);
+      }
+    }
+    await currentUser.save(null, { useMasterKey: true });
+    res.customSend("success");
+  } catch (error) {
+    res.customErrorSend(error.message, error.code);
+  }
+});
+
+// 下载记录
 Router.post(
   "/addDownloadRecord",
   validateParams(

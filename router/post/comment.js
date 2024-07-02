@@ -131,7 +131,7 @@ Router.get(
           avatar: item.get("avatar"),
           parentId: item.get("parentId"),
           postId: item.get("postId"),
-          username: item.get("username"),
+          username: item.get("nickName") ?? item.get("username"),
           comment: item.get("comment"),
           likeCount: item.get("likeCount") || 0,
           createdAt: item.get("createdAt"),
