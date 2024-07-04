@@ -4,7 +4,7 @@ const { validateParams } = require("../../utils/middlewares");
 
 const Router = express.Router();
 
-// 评论帖子
+// 评论
 Router.post(
   "/addComment",
   validateParams(
@@ -15,38 +15,27 @@ Router.post(
   ),
   async (req, res) => {
     try {
-      const PostComment = Parse.Object.extend("PostComment");
+      // 查找对应帖子
       const Post = Parse.Object.extend("Post");
       const postQuery = new Parse.Query(Post);
-      const commentQuery = new Parse.Query(PostComment);
-      postQuery.equalTo("objectId", req.body.parentId);
-      commentQuery.equalTo("objectId", req.body.parentId);
-      const result = await Promise.all([
-        postQuery.first({ useMasterKey: true }),
-        commentQuery.first({ useMasterKey: true }),
-      ]);
-      if (!result[0] && !result[1]) {
-        return res.customErrorSend(
-          `failed. The target does not exist or has been deleted `
-        );
-      }
-      const postQuery2 = new Parse.Query(Post);
-      postQuery2.equalTo(
-        "objectId",
-        result[0] ? result[0].id : result[1].get("postId")
-      );
-      const singlePost = await postQuery2.first({ useMasterKey: true });
+      const singlePost = await postQuery.get(req.body.parentId, {
+        useMasterKey: true,
+      });
+      // 创建评论对象
+      const PostComment = Parse.Object.extend("PostComment");
       const Comment = new PostComment();
+
       Comment.set("creatorId", req.user.id);
       Comment.set("username", req.user.get("username"));
       Comment.set("avatar", req.user.get("avatar"));
-      Comment.set("parentId", req.body.parentId);
-      Comment.set("likeCount", 0);
-      Comment.set("postId", result[0] ? result[0].id : result[1].get("postId"));
-      Comment.set("vestIn", result[0] ? 0 : 1); // 0 帖子 1评论
+      Comment.set("likeCount", 0); // 喜欢数
+      Comment.set("replyCount", 0); // 回复数
+      Comment.set("postId", req.body.parentId);
       Comment.set("comment", req.body.comment);
+
       singlePost.increment("commentCount");
       const afterInfo = await Comment.save(null, { useMasterKey: true });
+
       await singlePost.save(null, { useMasterKey: true });
       res.customSend(afterInfo.id);
     } catch (error) {
@@ -54,7 +43,74 @@ Router.post(
     }
   }
 );
+// 回复评论
+Router.post(
+  "/replyComment",
+  validateParams(
+    Joi.object({
+      comment: Joi.required(),
+      postId: Joi.required(),
+      replyId: Joi.required(),
+      parentId: Joi.required(),
+    })
+  ),
+  async (req, res) => {
+    try {
+      // 查找对应帖子
+      const Post = Parse.Object.extend("Post");
+      const postQuery = new Parse.Query(Post);
+      const singlePost = await postQuery.get(req.body.postId, {
+        useMasterKey: true,
+      });
+      // 查找对应父级评论
+      const PostComment = Parse.Object.extend("PostComment");
+      const commentQuery = new Parse.Query(PostComment);
+      const parentComment = await commentQuery.get(req.body.parentId, {
+        useMasterKey: true,
+      });
+      // 创建评论对象
+      const PostReplyComment = Parse.Object.extend("PostReplyComment");
 
+      // 查找对应回复评论
+      const replyCommentQuery = new Parse.Query(PostReplyComment);
+      const replyInfo = await replyCommentQuery.get(req.body.replyId, {
+        useMasterKey: true,
+      });
+
+      const replyComment = new PostReplyComment();
+
+      replyComment.set("creatorId", req.user.id);
+      replyComment.set("username", req.user.get("username"));
+      replyComment.set("avatar", req.user.get("avatar"));
+      replyComment.set("likeCount", 0);
+      replyComment.set("postId", req.body.postId);
+      replyComment.set("parentId", req.body.parentId);
+      replyComment.set("replyInfo", {
+        replyCommentId: req.body.replyId,
+        username: replyInfo.get("username"),
+        id: replyInfo.get("creatorId"),
+      });
+      replyComment.set("comment", req.body.comment);
+      const afterInfo = await replyComment.save(null, { useMasterKey: true });
+      singlePost.increment("commentCount");
+      parentComment.increment("replyCount");
+
+      singlePost
+        .save(null, { useMasterKey: true })
+        .then((res) => console.log("callback 回复评论增加帖子评论数 success"))
+        .catch((err) => console.log("callback 回复评论加帖子评论数 err", err));
+
+      parentComment
+        .save(null, { useMasterKey: true })
+        .then((res) => console.log("callback 回复评论增加回复数 success"))
+        .catch((err) => console.log("callback 回复评论增加回复数 error", err));
+
+      res.customSend(afterInfo.id);
+    } catch (error) {
+      res.customErrorSend(error.message, error.code);
+    }
+  }
+);
 // 删除评论
 Router.delete(
   "/delPostComment",
@@ -75,6 +131,19 @@ Router.delete(
         singlePost.increment("commentCount", -1);
         await comment.destroy();
         await singlePost.save(null, { useMasterKey: true });
+        if (comment.get("vestIn") === 1) {
+          const parentCommentQuery = new Parse.Query(PostComment);
+          parentCommentQuery
+            .get(comment.get("parentId"))
+            .then((data) => {
+              data.increment("replyCount", -1);
+              console.log("cb 删除评论 减少replyCount次数成功：");
+              data.save(null, { useMasterKey: true });
+            })
+            .catch((err) => {
+              console.log("cb 删除评论 减少replyCount次数失败：", err);
+            });
+        }
         res.customSend("cancel");
       } else {
         res.customErrorSend("not authority");
@@ -125,14 +194,14 @@ Router.get(
         query.equalTo("creatorId", req.user.id);
         query.equalTo("commentId", item.id);
         const likeRecord = await query.find({ useMasterKey: true });
+
         records.push({
           id: item.id,
           userLike: !!likeRecord.length,
           avatar: item.get("avatar"),
-          parentId: item.get("parentId"),
-          postId: item.get("postId"),
-          username: item.get("nickName") ?? item.get("username"),
+          username: item.get("username"),
           comment: item.get("comment"),
+          replyCount: item.get("replyCount"),
           likeCount: item.get("likeCount") || 0,
           createdAt: item.get("createdAt"),
         });
@@ -143,9 +212,80 @@ Router.get(
         nextPage: page * pageSize < total,
       });
     } catch (error) {
-      res.customErrorSend(error);
+      res.customErrorSend(error.message, error.code);
     }
   }
 );
+// 查询二级评论
+Router.get(
+  "/getReplyComment",
+  validateParams(
+    Joi.object({
+      id: Joi.required(),
+      page: Joi.any(),
+      pageSize: Joi.any(),
+    })
+  ),
+  async (req, res) => {
+    // 计算跳过的记录数和限制返回的记录数
+    const { page = 1, pageSize = 10 } = req.query;
 
+    // 计算需要跳过的数据量
+    const skip = (page - 1) * pageSize;
+
+    const PostReplyComment = Parse.Object.extend("PostReplyComment");
+    const commentQuery = new Parse.Query(PostReplyComment);
+    commentQuery.limit(parseInt(pageSize));
+    commentQuery.skip(skip);
+    commentQuery.equalTo("parentId", req.query.id);
+    commentQuery.descending("createdAt");
+    commentQuery.descending("likeCount");
+    const total = await commentQuery.count({ useMasterKey: true });
+    const commentResult = await commentQuery.find();
+
+    let records = [];
+    for (let i = 0; i < commentResult.length; i++) {
+      let item = commentResult[i];
+      const postCommentLike = Parse.Object.extend("PostCommentLike");
+      const query = new Parse.Query(postCommentLike);
+      query.equalTo("creatorId", req.user.id);
+      query.equalTo("commentId", item.id);
+      const likeRecord = await query.find({ useMasterKey: true });
+      records.push({
+        id: item.id,
+        userLike: !!likeRecord.length,
+        avatar: item.get("avatar"),
+        parentId: item.get("parentId"),
+        postId: item.get("postId"),
+        username: item.get("nickName") ?? item.get("username"),
+        comment: item.get("comment"),
+        likeCount: item.get("likeCount") || 0,
+        replyInfo: item.get("replyInfo"),
+        createdAt: item.get("createdAt"),
+      });
+    }
+    res.customSend({
+      records,
+      total,
+      nextPage: page * pageSize < total,
+    });
+  }
+);
 module.exports = Router;
+
+// parentComentQuery
+// .get(req.body.parentId)
+// .then((data) => {
+//   data.increment("replyCount");
+//   data
+//     .save(null, { useMasterKey: true })
+//     .then((e) =>
+//       console.log("cb 设置一级评论replyCount成功", data.id)
+//     )
+//     .catch((e) => {
+//       console.log(error, "cb 设置一级评论replyCount失败", data.id);
+//     });
+// })
+// .catch((error) => {
+//   console.log(error, "cb 设置一级评论replyCount失败");
+// });

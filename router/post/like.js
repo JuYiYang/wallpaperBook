@@ -5,7 +5,7 @@ const { validateParams } = require("../../utils/middlewares");
 const Router = express.Router();
 
 // 点赞帖子
-Router.get(
+Router.put(
   "/likePost",
   validateParams(
     Joi.object({
@@ -18,13 +18,13 @@ Router.get(
       const postQuery = new Parse.Query(Post);
 
       // 查找帖子是否存在
-      const singlePost = await postQuery.get(req.query.id, {
+      const singlePost = await postQuery.get(req.body.id, {
         useMasterKey: true,
       });
       const postLike = Parse.Object.extend("PostLike");
       const query = new Parse.Query(postLike);
       query.equalTo("creatorId", req.user.id);
-      query.equalTo("postId", req.query.id);
+      query.equalTo("postId", req.body.id);
       const reocrds = await query.find({ useMasterKey: true });
       if (reocrds.length > 0) {
         await Parse.Object.destroyAll(reocrds);
@@ -37,7 +37,7 @@ Router.get(
       like.set("creatorId", req.user.id);
       like.set("username", req.user.get("username"));
       like.set("avatar", req.user.get("avatar"));
-      like.set("postId", req.query.id);
+      like.set("postId", req.body.id);
       singlePost.increment("likeCount");
 
       await singlePost.save(null, { useMasterKey: true });
@@ -50,7 +50,7 @@ Router.get(
 );
 
 // 点赞评论
-Router.get(
+Router.put(
   "/likeComment",
   validateParams(
     Joi.object({
@@ -62,7 +62,7 @@ Router.get(
       const PostComment = Parse.Object.extend("PostComment");
       const PostCommentQuery = new Parse.Query(PostComment);
       // 查找评论是否存在
-      const singleComment = await PostCommentQuery.get(req.query.id, {
+      const singleComment = await PostCommentQuery.get(req.body.id, {
         useMasterKey: true,
       });
 
@@ -84,14 +84,13 @@ Router.get(
       like.set("creatorId", req.user.id);
       like.set("username", req.user.get("username"));
       like.set("avatar", req.user.get("avatar"));
-      like.set("commentId", req.query.id);
-      singleComment.increment("likeCommentCount");
+      like.set("commentId", req.body.id);
+      singleComment.increment("likeCount");
       await singleComment.save(null, { useMasterKey: true });
       await like.save(null, { useMasterKey: true });
       res.customSend("Success!");
-    } catch (err) {
-      console.log(err);
-      res.customErrorSend(err);
+    } catch (error) {
+      res.customErrorSend(error.message, error.code);
     }
   }
 );
