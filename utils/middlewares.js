@@ -1,3 +1,4 @@
+const geoip = require("geoip-lite");
 // 自定义响应方法
 exports.responseMiddleware = (req, res, next) => {
   const defaultConfig = {
@@ -48,7 +49,6 @@ exports.authenticateMiddleware = (req, res, next) => {
 
 exports.validateParams = (schema) => {
   return (req, res, next) => {
-    let data;
     if (req.method === "GET") {
       data = req.query;
     } else {

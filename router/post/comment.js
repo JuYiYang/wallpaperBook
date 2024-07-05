@@ -186,9 +186,16 @@ Router.get(
       const PostCommentResult = await PostCommentQuery.find();
 
       const total = await PostCommentQuery.count({ useMasterKey: true });
+      let replyTotal = 0;
       let records = [];
       for (let i = 0; i < PostCommentResult.length; i++) {
         let item = PostCommentResult[i];
+
+        const PostReplyComment = Parse.Object.extend("PostReplyComment");
+        const replyCommentQuery = new Parse.Query(PostReplyComment);
+        replyCommentQuery.equalTo("parentId", item.id);
+        replyTotal += await PostCommentQuery.count({ useMasterKey: true });
+
         const postCommentLike = Parse.Object.extend("PostCommentLike");
         const query = new Parse.Query(postCommentLike);
         query.equalTo("creatorId", req.user.id);
@@ -201,6 +208,7 @@ Router.get(
           avatar: item.get("avatar"),
           username: item.get("username"),
           comment: item.get("comment"),
+          replyChildren: [],
           replyCount: item.get("replyCount"),
           likeCount: item.get("likeCount") || 0,
           createdAt: item.get("createdAt"),
@@ -208,7 +216,7 @@ Router.get(
       }
       res.customSend({
         records,
-        total,
+        total: total + replyTotal,
         nextPage: page * pageSize < total,
       });
     } catch (error) {
