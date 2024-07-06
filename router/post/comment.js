@@ -73,7 +73,9 @@ Router.post(
 
       // 查找对应回复评论
       const replyCommentQuery = new Parse.Query(PostReplyComment);
-      const replyInfo = await replyCommentQuery.get(req.body.replyId, {
+      replyCommentQuery.equalTo("objectId", req.body.replyId);
+
+      const replyInfo = await replyCommentQuery.first({
         useMasterKey: true,
       });
 
@@ -85,21 +87,33 @@ Router.post(
       replyComment.set("likeCount", 0);
       replyComment.set("postId", req.body.postId);
       replyComment.set("parentId", req.body.parentId);
-      replyComment.set("replyInfo", {
-        replyCommentId: req.body.replyId,
-        username: replyInfo.get("username"),
-        id: replyInfo.get("creatorId"),
-      });
+      replyComment.set(
+        "replyInfo",
+        !!replyInfo
+          ? {
+              replyCommentId: req.body.replyId,
+              username: replyInfo.get("username"),
+              id: replyInfo.get("creatorId"),
+            }
+          : {
+              replyCommentId: parentComment.id,
+              username: parentComment.get("username"),
+              id: parentComment.get("creatorId"),
+            }
+      );
+
+      console.log(!!replyInfo ? "回复帖子评论" : "回复评论评论");
+      console.log(parentComment.id, req.body.replyId);
       replyComment.set("comment", req.body.comment);
       const afterInfo = await replyComment.save(null, { useMasterKey: true });
-      singlePost.increment("commentCount");
-      parentComment.increment("replyCount");
 
+      singlePost.increment("commentCount");
       singlePost
         .save(null, { useMasterKey: true })
         .then((res) => console.log("callback 回复评论增加帖子评论数 success"))
         .catch((err) => console.log("callback 回复评论加帖子评论数 err", err));
 
+      parentComment.increment("replyCount");
       parentComment
         .save(null, { useMasterKey: true })
         .then((res) => console.log("callback 回复评论增加回复数 success"))
@@ -170,7 +184,6 @@ Router.get(
 
       // 计算需要跳过的数据量
       const skip = (page - 1) * pageSize;
-
       const Post = Parse.Object.extend("Post");
       const post = new Parse.Query(Post);
       await post.get(req.query.id);
@@ -236,7 +249,7 @@ Router.get(
   ),
   async (req, res) => {
     // 计算跳过的记录数和限制返回的记录数
-    const { page = 1, pageSize = 10 } = req.query;
+    const { page = 1, pageSize = 5 } = req.query;
 
     // 计算需要跳过的数据量
     const skip = (page - 1) * pageSize;
