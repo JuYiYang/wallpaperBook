@@ -77,7 +77,7 @@ const createPost = async (images, user, body) => {
   post.set("creatorAvatar", user.get("avatar"));
   post.set("creatorName", user.get("nickName"));
 
-  await post.save(null, { useMasterKey: true });
+  return await post.save(null, { useMasterKey: true });
 };
 
 // 查询帖子

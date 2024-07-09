@@ -9,7 +9,10 @@ const Router = express.Router();
 Router.get("/info", async (req, res) => {
   const { sessionToken, className, __type, ACL, ...userInfo } =
     req.user.toJSON();
-  res.customSend(userInfo);
+  res.customSend({
+    ...userInfo,
+    last_login_at: req.user.get("last_login_at"),
+  });
 });
 
 // 修改用户信息

@@ -16,17 +16,39 @@ Router.post(
     }).unknown(true)
   ),
   async (req, res) => {
-    const query = req.body;
     try {
-      await Parse.User.logOut();
-      const userLogin = await Parse.User.logIn(query.account, query.password);
+      const query = new Parse.Query(Parse.User);
+      query.equalTo("username", req.body.account);
+      const user = await query.first({ useMasterKey: true });
+      //单一会话
+      await invalidateUserSessions(user);
+
+      const userLogin = await Parse.User.logIn(
+        req.body.account,
+        req.body.password
+      );
+
+      user.set("last_login_at", new Date());
+      user.save(null, { useMasterKey: true });
       res.customSend({ token: userLogin.getSessionToken() });
     } catch (error) {
       res.customErrorSend(error.message, error.code, error);
     }
   }
 );
-
+const invalidateUserSessions = async (user) => {
+  if (user) {
+    const sessionQuery = new Parse.Query(Parse.Session);
+    sessionQuery.equalTo("user", user);
+    const sessions = await sessionQuery.find({ useMasterKey: true });
+    const promises = sessions.map((session) => {
+      session.destroy({ useMasterKey: true });
+    });
+    await Promise.all(promises);
+  } else {
+    console.log("用户不存在");
+  }
+};
 Router.post(
   "/register",
   validateParams(

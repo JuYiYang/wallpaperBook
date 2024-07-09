@@ -7,7 +7,10 @@ const config = require("./config/config");
 const bodyParser = require("body-parser");
 
 const app = express();
+
 app.use("/static", express.static(path.join(__dirname, "upload", "images")));
+
+app.set("trust proxy", ["loopback", "192.168.0.0/24"]);
 
 const { Account, Login, Role, Post } = require("./router/index");
 const {
@@ -32,6 +35,17 @@ app.use("/account", authenticateMiddleware, Account);
 app.use("/role", authenticateMiddleware, Role);
 app.use("/Post", authenticateMiddleware, Post);
 // app.use("/like", authenticateMiddleware, Like);
+
+process.on("uncaughtException", (err) => {
+  console.error("Uncaught Exception:", err);
+  // 可选择重启服务或记录日志
+});
+
+process.on("unhandledRejection", (reason, promise) => {
+  console.error("Unhandled Rejection:", reason);
+  // 可选择重启服务或记录日志
+});
+
 app.listen(config.prot, () => {
   console.log(`${config.prot}已启动`);
 });

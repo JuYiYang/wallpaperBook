@@ -26,13 +26,18 @@ Router.post(
       const Comment = new PostComment();
 
       Comment.set("creatorId", req.user.id);
-      Comment.set("username", req.user.get("username"));
+      Comment.set("username", req.user.get("nickname"));
       Comment.set("avatar", req.user.get("avatar"));
       Comment.set("likeCount", 0); // 喜欢数
       Comment.set("replyCount", 0); // 回复数
       Comment.set("postId", req.body.parentId);
       Comment.set("comment", req.body.comment);
-
+      city: item.get("city"),
+        Comment.set(
+          "ip",
+          req.headers["x-forwarded-for"] || req.socket.remoteAddress
+        );
+      Comment.set("city", "zheJiang");
       singlePost.increment("commentCount");
       const afterInfo = await Comment.save(null, { useMasterKey: true });
 
@@ -82,11 +87,16 @@ Router.post(
       const replyComment = new PostReplyComment();
 
       replyComment.set("creatorId", req.user.id);
-      replyComment.set("username", req.user.get("username"));
+      replyComment.set("username", req.user.get("nickName"));
       replyComment.set("avatar", req.user.get("avatar"));
       replyComment.set("likeCount", 0);
       replyComment.set("postId", req.body.postId);
       replyComment.set("parentId", req.body.parentId);
+      replyComment.set(
+        "ip",
+        req.headers["x-forwarded-for"] || req.socket.remoteAddress
+      );
+      replyComment.set("city", "zheJiang");
       replyComment.set(
         "replyInfo",
         !!replyInfo
@@ -186,7 +196,7 @@ Router.get(
       const skip = (page - 1) * pageSize;
       const Post = Parse.Object.extend("Post");
       const post = new Parse.Query(Post);
-      await post.get(req.query.id);
+      const postDetail = await post.get(req.query.id);
 
       const PostComment = Parse.Object.extend("PostComment");
       const PostCommentQuery = new Parse.Query(PostComment);
@@ -225,11 +235,12 @@ Router.get(
           replyCount: item.get("replyCount"),
           likeCount: item.get("likeCount") || 0,
           createdAt: item.get("createdAt"),
+          city: item.get("city"),
         });
       }
       res.customSend({
         records,
-        total: total + replyTotal,
+        total: postDetail.get("commentCount") || 0,
         nextPage: page * pageSize < total,
       });
     } catch (error) {
@@ -283,6 +294,7 @@ Router.get(
         likeCount: item.get("likeCount") || 0,
         replyInfo: item.get("replyInfo"),
         createdAt: item.get("createdAt"),
+        city: item.get("city"),
       });
     }
     res.customSend({

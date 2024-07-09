@@ -1,4 +1,3 @@
-const geoip = require("geoip-lite");
 // 自定义响应方法
 exports.responseMiddleware = (req, res, next) => {
   const defaultConfig = {

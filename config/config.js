@@ -7,6 +7,7 @@ const global_parse__config = {
   enableForAnonymousUser: true, //为经过身份验证的用户启用文件上传
   enableForAuthenticatedUser: true, //启用公开文件上传功能，即所有人
   prot: 1337,
+  sessionLength: 60 * 60 * 24 * 7,
   publicServerURL: "http://localhost:1337/upload",
 };
 
