@@ -37,10 +37,9 @@ const createPost = async (images, user, body) => {
   for (let i = 0; i < images.length; i++) {
     let image = images[i];
     const wallInfo = new PostWall();
-
     if (imageSizes.length)
       maxPostHeight = Math.max(maxPostHeight, imageSizes[i].height);
-    let filePath = "http://192.168.1.106:1337" + "/static/" + image.filename;
+    let filePath = "http://localhost:1337" + "/static/" + image.filename;
     // 设置图片信息
     wallInfo.set("imageName", image.filename); // 图片名称包含后缀
     wallInfo.set("imageUrl", filePath); // 图片可访问路径
@@ -80,6 +79,31 @@ const createPost = async (images, user, body) => {
   return await post.save(null, { useMasterKey: true });
 };
 
+// 删除帖子
+Router.delete(
+  "/del",
+  validateParams(
+    Joi.object({
+      id: Joi.required(),
+    })
+  ),
+  async (req, res) => {
+    try {
+      const postQuery = new Parse.Query(Post);
+      const singlePost = await postQuery.get(req.body.id);
+
+      if (singlePost.get("creator") !== req.user.id) {
+        return res.customErrorSend("暂无权限");
+      }
+
+      await singlePost.destroy();
+      res.customSend("success");
+    } catch (error) {
+      res.customErrorSend("帖子不存在或权限不足");
+    }
+  }
+);
+
 // 查询帖子
 Router.get("/getAllPost", async (req, res) => {
   // 计算跳过的记录数和限制返回的记录数
@@ -88,7 +112,6 @@ Router.get("/getAllPost", async (req, res) => {
   // 计算需要跳过的数据量
   const skip = (page - 1) * pageSize;
 
-  // 创建收藏夹查询
   const postQuery = new Parse.Query(Post);
   postQuery.limit(parseInt(pageSize));
   postQuery.skip(skip);
@@ -202,29 +225,53 @@ Router.get(
   }
 );
 
-// 删除帖子
-Router.delete(
-  "/del",
-  validateParams(
-    Joi.object({
-      id: Joi.required(),
-    })
-  ),
-  async (req, res) => {
-    try {
-      const postQuery = new Parse.Query(Post);
-      const singlePost = await postQuery.get(req.body.id);
+// 查询当前用户创建的帖子
+Router.get("/myPost", async (req, res) => {
+  try {
+    // 计算跳过的记录数和限制返回的记录数
+    const { page = 1, pageSize = 10 } = req.query;
 
-      if (singlePost.get("creator") !== req.user.id) {
-        return res.customErrorSend("暂无权限");
-      }
-
-      await singlePost.destroy();
-      res.customSend("success");
-    } catch (error) {
-      res.customErrorSend("帖子不存在或权限不足");
+    // 计算需要跳过的数据量
+    const skip = (page - 1) * pageSize;
+    const postQuery = new Parse.Query(Post);
+    postQuery.limit(parseInt(pageSize));
+    postQuery.skip(skip);
+    postQuery.equalTo("creator", req.user.id);
+    postQuery.descending("createdAt");
+    const postResult = await postQuery.find();
+    const total = await postQuery.count({ useMasterKey: true });
+    let records = [];
+    for (let i = 0; i < postResult.length; i++) {
+      let item = postResult[i];
+      const PostWall = Parse.Object.extend("PostWall");
+      const PostContentInfo = Parse.Object.extend("PostContent");
+      // 图
+      const wallQuery = new Parse.Query(PostWall);
+      wallQuery.containedIn("objectId", item.get("wallId").split(","));
+      // 文
+      const contentQuery = new Parse.Query(PostContentInfo);
+      contentQuery.equalTo("objectId", item.get("contentId"));
+      let content = await contentQuery.first({ useMasterKey: true });
+      let walls = await wallQuery.find({ useMasterKey: true });
+      records.push({
+        id: item.id,
+        likeCount: item.get("likeCount"),
+        commentCount: item.get("commentCount"),
+        createdAt: item.get("createdAt"),
+        postId: item.get("postId"),
+        content: content.get("content"),
+        walls: walls.map((wall) => {
+          return {
+            id: wall.id,
+            createdAt: wall.get("createdAt"),
+            url: wall.get("imageUrl"),
+          };
+        }),
+      });
     }
+    res.customSend({ records, nextPage: page * pageSize < total });
+  } catch (error) {
+    res.customErrorSend(error.message, error.code);
   }
-);
-
+});
 module.exports = Router;

@@ -33,7 +33,10 @@ Router.put(
         res.customSend("cancel");
         return;
       }
+      console.log(singlePost.toJSON());
       const like = new postLike();
+      like.set("wallId", singlePost.get("wallId"));
+      like.set("contentId", singlePost.get("contentId"));
       like.set("creatorId", req.user.id);
       like.set("username", req.user.get("username"));
       like.set("avatar", req.user.get("avatar"));
@@ -48,6 +51,60 @@ Router.put(
     }
   }
 );
+
+// 查询用户点赞的帖子
+Router.get("/getMylikePost", async (req, res) => {
+  try {
+    // 计算跳过的记录数和限制返回的记录数
+    const { page = 1, pageSize = 10 } = req.query;
+
+    // 计算需要跳过的数据量
+    const skip = (page - 1) * pageSize;
+    const postLike = Parse.Object.extend("PostLike");
+    const query = new Parse.Query(postLike);
+    query.equalTo("creatorId", req.user.id);
+    query.limit(parseInt(pageSize));
+    query.skip(skip);
+    query.descending("createdAt");
+    const record = await query.find({ useMasterKey: true });
+    const total = await query.count({ useMasterKey: true });
+
+    let records = [];
+    for (let i = 0; i < record.length; i++) {
+      let item = record[i];
+      const PostWall = Parse.Object.extend("PostWall");
+      const PostContentInfo = Parse.Object.extend("PostContent");
+      // 图
+      const wallQuery = new Parse.Query(PostWall);
+      wallQuery.containedIn("objectId", item.get("wallId").split(","));
+      // 文
+      const contentQuery = new Parse.Query(PostContentInfo);
+      contentQuery.equalTo("objectId", item.get("contentId"));
+      let content = await contentQuery.first({ useMasterKey: true });
+      let walls = await wallQuery.find({ useMasterKey: true });
+      records.push({
+        id: item.id,
+        createdAt: item.get("createdAt"),
+        postId: item.get("postId"),
+        content: content.get("content"),
+        walls: walls.map((wall) => {
+          return {
+            id: wall.id,
+            createdAt: wall.get("createdAt"),
+            url: wall.get("imageUrl"),
+          };
+        }),
+      });
+    }
+
+    res.customSend({
+      records,
+      nextPage: page * pageSize < total,
+    });
+  } catch (error) {
+    res.customErrorSend(error.message, error.code);
+  }
+});
 
 // 点赞评论
 Router.put(

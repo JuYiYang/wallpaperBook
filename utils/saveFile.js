@@ -1,7 +1,6 @@
 const multer = require("multer");
 const fs = require("fs");
 const path = require("path");
-const { v4: uuidv4 } = require("uuid");
 //自定义中间件
 const uploadHandler = multer({
   storage: multer.diskStorage({
@@ -19,8 +18,8 @@ const uploadHandler = multer({
       });
     },
     filename: (req, file, cb) => {
-      const extension = path.extname(file.originalname); // 获取原始文件的后缀名
-      cb(null, `${uuidv4()}${extension}`);
+      // const extension = path.extname(file.originalname); // 获取原始文件的后缀名
+      cb(null, file.originalname);
     }, // 使用自定义的文件名函数
   }),
 });
