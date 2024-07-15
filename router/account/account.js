@@ -2,7 +2,7 @@ const dayjs = require("dayjs");
 const express = require("express");
 const Parse = require("parse/node");
 const Joi = require("joi");
-const { validateParams } = require("../utils/middlewares");
+const { validateParams } = require("../../utils/middlewares");
 const Router = express.Router();
 
 // 查询用户信息

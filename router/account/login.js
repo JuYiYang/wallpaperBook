@@ -2,8 +2,8 @@ const express = require("express");
 const Parse = require("parse/node");
 
 const Joi = require("joi");
-const { validateParams } = require("../utils/middlewares");
-const { baseOption, transport } = require("../utils/sendEmail");
+const { validateParams } = require("../../utils/middlewares");
+const { baseOption, transport } = require("../../utils/sendEmail");
 const Router = express.Router();
 Parse.User.enableUnsafeCurrentUser();
 

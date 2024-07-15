@@ -1,11 +1,15 @@
 const express = require("express");
 const Parse = require("parse/node");
 const Joi = require("joi");
-const { validateParams } = require("../utils/middlewares");
+const {
+  validateParams,
+  authenticateMiddleware,
+} = require("../../utils/middlewares");
 const Router = express.Router();
 
 Router.put(
-  "/update",
+  "/updateLike",
+  authenticateMiddleware,
   validateParams(
     Joi.object({
       wallId: Joi.required(),
@@ -13,10 +17,16 @@ Router.put(
   ),
   async (req, res) => {
     try {
-      const Like = Parse.Object.extend("Like");
+      const Wall = Parse.Object.extend("Wall");
+      await new Parse.Query(Wall).get(req.body.wallId, {
+        useMasterKey: true,
+      });
+      const Like = Parse.Object.extend("WallLike");
       const query = new Parse.Query(Like);
       query.equalTo("creatorId", req.user.id);
-      const reocrds = await query.find();
+      const reocrds = await query.find({
+        useMasterKey: true,
+      });
       if (reocrds.length > 0) {
         await Parse.Object.destroyAll(reocrds);
         res.customSend("cancel");
@@ -33,7 +43,7 @@ Router.put(
   }
 );
 
-Router.get("/likes", async (req, res) => {
+Router.get("/likes", authenticateMiddleware, async (req, res) => {
   // 计算跳过的记录数和限制返回的记录数
   const { page = 1, pageSize = 10 } = req.query;
 
@@ -41,7 +51,7 @@ Router.get("/likes", async (req, res) => {
   const skip = (page - 1) * pageSize;
 
   // 创建收藏夹查询
-  const Like = Parse.Object.extend("Like");
+  const Like = Parse.Object.extend("WallLike");
   const likeQuery = new Parse.Query(Like);
 
   // 查询当前用户的点赞记录

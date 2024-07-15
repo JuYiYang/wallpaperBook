@@ -1,21 +1,21 @@
-const Account = require("./account");
+const Account = require("./account/account");
 
-const Login = require("./login");
+const Login = require("./account/login");
 
-const Role = require("./role");
+const Role = require("./account/role");
+
 const Post = require("./post/index");
+const Wall = require("./wall/index");
 
 const Reptile = require("./reptile_duitang");
 // const Collect = require("./wall/collect");
-
-// const Like = require("./wall/like");
 
 module.exports = {
   Role,
   Login,
   Account,
+  Wall,
   Post,
   Reptile,
   // Collect,
-  // Like,
 };

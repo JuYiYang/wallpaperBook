@@ -1,5 +1,8 @@
 const express = require("express");
 const axios = require("axios");
+const crypto = require("crypto");
+const fs = require("fs-extra");
+const path = require("path");
 
 const Router = express.Router();
 const keyWords = [
@@ -27,6 +30,9 @@ const keyWords = [
   "设计",
   "古风",
 ];
+let timer;
+
+const uploadDir = path.join(__dirname, "../upload", "network");
 const reqDuiTangData = async (query, sendEvent) => {
   const ReptileRecord = Parse.Object.extend("ReptileRecord");
   const reptileRecord = new ReptileRecord();
@@ -40,6 +46,8 @@ const reqDuiTangData = async (query, sendEvent) => {
       {
         params: {
           ...query,
+          include_fields:
+            "like_count,sender,album,msg,reply_count,top_comments",
           _: Date.now(),
         },
       }
@@ -71,17 +79,34 @@ const reqDuiTangData = async (query, sendEvent) => {
       for (let key in item) {
         if (key == "id") {
           duiTangData.set("source_id", item[key]);
-          // return;
-        } else {
-          duiTangData.set(key, item[key]);
+          continue;
         }
+        // if (key == "favorite_count") {
+        //   let value = parseInt(item[key]);
+        //   duiTangData.set("favorite_count", Number.isNaN(value) ? 0 : value);
+        //   continue;
+        // }
+        // if (key == "buyable") {
+        //   // let value = parseInt(item[key]);
+        //   duiTangData.set("favorite_count", String(item[key]));
+        //   continue;
+        // }
+
+        // if (
+        //   typeof item[key] == "number" &&
+        //   !["oriAddDatetime", "add_datetime_ts", "sender_id"].includes(key)
+        // ) {
+        //   duiTangData.set(key, String(item[key]));
+        //   continue;
+        // }
+        duiTangData.set(key, item[key]);
       }
       await duiTangData.save(null, { useMasterKey: true });
     }
     if (!!next_start && next_start > 0) {
       console.log(next_start);
       sendEvent({ next_start, ms: 5000 });
-      setTimeout(
+      timer = setTimeout(
         () =>
           reqDuiTangData(
             {
@@ -95,7 +120,6 @@ const reqDuiTangData = async (query, sendEvent) => {
     } else {
       return 0;
     }
-    // return data.data.next_start;
   } catch (err) {
     console.log(err);
     reptileRecord.set(
@@ -108,6 +132,7 @@ const reqDuiTangData = async (query, sendEvent) => {
     reptileRecord.set("req_status", "失败");
     reptileRecord.set("req_status_desc", String(err));
     reptileRecord.save(null, { useMasterKey: true });
+    sendEvent({ msg: err });
     // return query.next_start;
   } finally {
     reptileRecord.save(null, { useMasterKey: true });
@@ -124,14 +149,21 @@ Router.get("/duitang", async (req, res) => {
     res.write(`data: ${JSON.stringify(data)}\n\n`);
   };
 
-  let currentKey = 0;
-  let next_start = 0;
-  let query = {
-    kw: keyWords[currentKey],
-    start: next_start,
-  };
+  let next_start = req.query.next_start;
+  let current = req.query.current;
+  console.log("当前值：" + keyWords[current]);
   try {
-    await reqDuiTangData(query, sendEvent);
+    // for (let i = 0; i < keyWords.length; i++) {
+    await reqDuiTangData(
+      {
+        kw: keyWords[current],
+        start: next_start,
+      },
+      sendEvent
+    );
+    // await delay();
+    sendEvent({ msg: "已完成" + keyWords[current] });
+    // }
   } catch (err) {
     console.log(err);
     sendEvent({ err });
@@ -148,8 +180,70 @@ Router.get("/duitang", async (req, res) => {
   // });
 
   req.on("close", () => {
+    console.log("断开");
     // clearInterval(interval);
+    clearTimeout(timer);
   });
 });
 
+Router.get("/downloadDuiTang", async (req, res) => {
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Connection", "keep-alive");
+  res.flushHeaders(); // 确保响应头被立即发送
+
+  const sendEvent = (data) => {
+    res.write(`data: ${JSON.stringify(data)}\n\n`);
+  };
+
+  const DuiTangData = Parse.Object.extend("DuiTangData");
+
+  const dtQuery = new Parse.Query(DuiTangData);
+  const total = await dtQuery.count();
+  dtQuery.limit(40);
+  dtQuery.skip(2);
+  const records = await dtQuery.find();
+  fs.ensureDirSync(uploadDir);
+  sendEvent({ length: records.length, total, records });
+  for (let i = 0; i < records.length; i++) {
+    let imageUrl = records[i].get("photo").path;
+    let fileExtension = path.extname(imageUrl); // 获取文件扩展名
+    // 请求图片文件
+    if (fileExtension.indexOf("_") > 0) {
+      fileExtension = fileExtension.split("_")[0];
+    }
+    const response = await axios.get(imageUrl, { responseType: "arraybuffer" });
+    const fileBuffer = Buffer.from(response.data, "binary");
+
+    // 计算 MD5 值
+    const hash = crypto.createHash("md5").update(fileBuffer).digest("hex");
+    const fileName = `${hash}${fileExtension}`;
+    const filePath = path.join(uploadDir, fileName);
+    if (fs.existsSync(filePath)) {
+      sendEvent({ skipped: true, imageUrl, id: records[i].id, fileExtension });
+      continue;
+    }
+    // 保存文件
+    await fs.writeFile(filePath, fileBuffer);
+    await delay(1700);
+    sendEvent({
+      imageUrl,
+      fileExtension,
+      id: records[i].id,
+      msg: "保存成功！",
+    });
+  }
+  res.end();
+  req.on("close", () => {
+    console.log("断开");
+  });
+});
+
+const delay = (ms = 5000) => {
+  return new Promise((resolve, reject) => {
+    setTimeout(() => {
+      resolve();
+    }, ms);
+  });
+};
 module.exports = Router;

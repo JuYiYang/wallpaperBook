@@ -12,7 +12,7 @@ app.use("/static", express.static(path.join(__dirname, "upload", "images")));
 
 app.set("trust proxy", ["loopback", "192.168.0.0/24"]);
 
-const { Account, Login, Role, Post, Reptile } = require("./router/index");
+const { Account, Login, Role, Post, Reptile, Wall } = require("./router/index");
 const {
   responseMiddleware,
   crossDomainMiddlewar,
@@ -33,7 +33,8 @@ app.use("/parse", api.app);
 app.use("/account", Login);
 app.use("/account", authenticateMiddleware, Account);
 app.use("/role", authenticateMiddleware, Role);
-app.use("/Post", authenticateMiddleware, Post);
+app.use("/post", authenticateMiddleware, Post);
+app.use("/wall", Wall);
 app.use("/reptile", Reptile);
 // app.use("/like", authenticateMiddleware, Like);
 
