@@ -3,6 +3,7 @@ const path = require("path");
 
 const ParseServer = require("parse-server").ParseServer;
 const config = require("./config/config");
+require("dotenv").config();
 
 const bodyParser = require("body-parser");
 
@@ -36,6 +37,9 @@ app.use("/role", authenticateMiddleware, Role);
 app.use("/post", authenticateMiddleware, Post);
 app.use("/wall", Wall);
 app.use("/reptile", Reptile);
+app.use("*", (req, res) => {
+  res.status(404).sendFile(path.join(__dirname, "public", "404.html"));
+});
 // app.use("/like", authenticateMiddleware, Like);
 
 process.on("uncaughtException", (err) => {
@@ -48,7 +52,7 @@ process.on("unhandledRejection", (reason, promise) => {
   // 可选择重启服务或记录日志
 });
 
-app.listen(config.prot, () => {
-  console.log(`${config.prot}已启动`);
+app.listen(process.env.PORT, () => {
+  console.log(`${process.env.PORT}已启动`);
 });
 // parse-dashboard --config ./config/parse-dashboard-config.json

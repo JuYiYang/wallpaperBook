@@ -30,15 +30,17 @@ Router.post(
       wall.set(
         "path",
         req.files
-          .map((image) => "http://localhost:1337" + "/static/" + image.filename)
+          .map((image) => process.env.IMAGEPREFIX + "/static/" + image.filename)
           .join(",")
       );
+
       wall.set("username", req.body.virtualName || req.user.get("nickName"));
       wall.set("avatar", req.body.virtualAvatar || req.user.get("avatar"));
       wall.set("postId", "");
       wall.set("frequency", req.body.frequency || 1);
       wall.set("source", "custom");
       wall.set("sourceId", "");
+      wall.set("sourcePath", "");
       const afterInfo = await wall.save(null, { useMasterKey: true });
       res.customSend(afterInfo.id);
     } catch (error) {

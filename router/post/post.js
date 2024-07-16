@@ -1,6 +1,9 @@
-const { multiple } = require("../../utils//saveFile");
 const express = require("express");
+const fs = require("fs-extra");
+const crypto = require("crypto");
+const path = require("path");
 const Joi = require("joi");
+const { multiple } = require("../../utils//saveFile");
 const { validateParams } = require("../../utils/middlewares");
 
 const Router = express.Router();
@@ -36,12 +39,22 @@ const createPost = async (images, user, body) => {
   let maxPostHeight = 0;
   for (let i = 0; i < images.length; i++) {
     let image = images[i];
+    // 读取文件内容
+    const fileBuffer = await fs.readFile(image.path);
+
+    // 计算 MD5 值
+    const hash = crypto.createHash("md5").update(fileBuffer).digest("hex");
+    const extension = path.extname(image.originalname);
+    const newFilename = `${hash}${extension}`;
+    const newPath = path.join(image.destination, newFilename);
+    // 重命名文件
+    await fs.rename(image.path, newPath);
     const wallInfo = new PostWall();
     if (imageSizes.length)
       maxPostHeight = Math.max(maxPostHeight, imageSizes[i].height);
-    let filePath = "http://localhost:1337" + "/static/" + image.filename;
+    let filePath = process.env.IMAGEPREFIX + "/static/" + newFilename;
     // 设置图片信息
-    wallInfo.set("imageName", image.filename); // 图片名称包含后缀
+    wallInfo.set("imageName", newFilename); // 图片名称包含后缀
     wallInfo.set("imageUrl", filePath); // 图片可访问路径
     wallInfo.set("imageSize", image.size); // 字节大小
     wallInfo.set(

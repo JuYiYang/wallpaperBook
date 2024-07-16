@@ -68,8 +68,9 @@ Router.post(
     user.set("downloadFrequency", 0);
     user.set(
       "avatar",
-      "https://api.dicebear.com/9.x/pixel-art/png?seed=" +
-        (Math.random() * 1000).toFixed()
+      query.avatar ||
+        "https://api.dicebear.com/9.x/pixel-art/png?seed=" +
+          (Math.random() * 1000).toFixed()
     );
     user.set("nickName", query.username);
     try {

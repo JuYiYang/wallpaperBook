@@ -24,19 +24,18 @@ Router.post(
       // 创建评论对象
       const PostComment = Parse.Object.extend("PostComment");
       const Comment = new PostComment();
-
       Comment.set("creatorId", req.user.id);
-      Comment.set("username", req.user.get("nickname"));
+      Comment.set("username", req.user.get("nickName"));
       Comment.set("avatar", req.user.get("avatar"));
       Comment.set("likeCount", 0); // 喜欢数
       Comment.set("replyCount", 0); // 回复数
       Comment.set("postId", req.body.parentId);
       Comment.set("comment", req.body.comment);
-      city: item.get("city"),
-        Comment.set(
-          "ip",
-          req.headers["x-forwarded-for"] || req.socket.remoteAddress
-        );
+      Comment.set("city", "浙江");
+      Comment.set(
+        "ip",
+        req.headers["x-forwarded-for"] || req.socket.remoteAddress
+      );
       Comment.set("city", "zheJiang");
       singlePost.increment("commentCount");
       const afterInfo = await Comment.save(null, { useMasterKey: true });
@@ -44,6 +43,7 @@ Router.post(
       await singlePost.save(null, { useMasterKey: true });
       res.customSend(afterInfo.id);
     } catch (error) {
+      console.log(error);
       res.customErrorSend(error.message, error.code);
     }
   }
@@ -70,6 +70,7 @@ Router.post(
       // 查找对应父级评论
       const PostComment = Parse.Object.extend("PostComment");
       const commentQuery = new Parse.Query(PostComment);
+      // parentId 是一级评论的id replyId是所回复id
       const parentComment = await commentQuery.get(req.body.parentId, {
         useMasterKey: true,
       });
@@ -112,8 +113,6 @@ Router.post(
             }
       );
 
-      console.log(!!replyInfo ? "回复帖子评论" : "回复评论评论");
-      console.log(parentComment.id, req.body.replyId);
       replyComment.set("comment", req.body.comment);
       const afterInfo = await replyComment.save(null, { useMasterKey: true });
 
@@ -289,7 +288,7 @@ Router.get(
         avatar: item.get("avatar"),
         parentId: item.get("parentId"),
         postId: item.get("postId"),
-        username: item.get("nickName") ?? item.get("username"),
+        username: item.get("username"),
         comment: item.get("comment"),
         likeCount: item.get("likeCount") || 0,
         replyInfo: item.get("replyInfo"),
@@ -305,20 +304,3 @@ Router.get(
   }
 );
 module.exports = Router;
-
-// parentComentQuery
-// .get(req.body.parentId)
-// .then((data) => {
-//   data.increment("replyCount");
-//   data
-//     .save(null, { useMasterKey: true })
-//     .then((e) =>
-//       console.log("cb 设置一级评论replyCount成功", data.id)
-//     )
-//     .catch((e) => {
-//       console.log(error, "cb 设置一级评论replyCount失败", data.id);
-//     });
-// })
-// .catch((error) => {
-//   console.log(error, "cb 设置一级评论replyCount失败");
-// });

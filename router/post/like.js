@@ -33,12 +33,11 @@ Router.put(
         res.customSend("cancel");
         return;
       }
-      console.log(singlePost.toJSON());
       const like = new postLike();
       like.set("wallId", singlePost.get("wallId"));
       like.set("contentId", singlePost.get("contentId"));
       like.set("creatorId", req.user.id);
-      like.set("username", req.user.get("username"));
+      like.set("username", req.user.get("nickName"));
       like.set("avatar", req.user.get("avatar"));
       like.set("postId", req.body.id);
       singlePost.increment("likeCount");
@@ -139,7 +138,7 @@ Router.put(
 
       const like = new postCommentLike();
       like.set("creatorId", req.user.id);
-      like.set("username", req.user.get("username"));
+      like.set("username", req.user.get("nickName"));
       like.set("avatar", req.user.get("avatar"));
       like.set("commentId", req.body.id);
       singleComment.increment("likeCount");

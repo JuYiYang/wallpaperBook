@@ -31,7 +31,7 @@ const keyWords = [
   "古风",
 ];
 let timer;
-
+const Wall = Parse.Object.extend("Wall");
 const uploadDir = path.join(__dirname, "../upload", "network");
 const reqDuiTangData = async (query, sendEvent) => {
   const ReptileRecord = Parse.Object.extend("ReptileRecord");
@@ -187,6 +187,8 @@ Router.get("/duitang", async (req, res) => {
 });
 
 Router.get("/downloadDuiTang", async (req, res) => {
+  let isClose = false;
+  let current = 0;
   res.setHeader("Content-Type", "text/event-stream");
   res.setHeader("Cache-Control", "no-cache");
   res.setHeader("Connection", "keep-alive");
@@ -195,18 +197,25 @@ Router.get("/downloadDuiTang", async (req, res) => {
   const sendEvent = (data) => {
     res.write(`data: ${JSON.stringify(data)}\n\n`);
   };
-
+  req.on("close", () => {
+    isClose = true;
+    console.log("断开", current);
+  });
   const DuiTangData = Parse.Object.extend("DuiTangData");
 
   const dtQuery = new Parse.Query(DuiTangData);
   const total = await dtQuery.count();
-  dtQuery.limit(40);
-  dtQuery.skip(2);
-  const records = await dtQuery.find();
   fs.ensureDirSync(uploadDir);
+  dtQuery.limit(1);
+  dtQuery.skip(1);
+
+  const records = await dtQuery.find();
   sendEvent({ length: records.length, total, records });
-  for (let i = 0; i < records.length; i++) {
-    let imageUrl = records[i].get("photo").path;
+
+  for (current; current < records.length; current++) {
+    if (isClose) break;
+    let item = records[current];
+    let imageUrl = item.get("photo").path;
     let fileExtension = path.extname(imageUrl); // 获取文件扩展名
     // 请求图片文件
     if (fileExtension.indexOf("_") > 0) {
@@ -220,23 +229,33 @@ Router.get("/downloadDuiTang", async (req, res) => {
     const fileName = `${hash}${fileExtension}`;
     const filePath = path.join(uploadDir, fileName);
     if (fs.existsSync(filePath)) {
-      sendEvent({ skipped: true, imageUrl, id: records[i].id, fileExtension });
+      sendEvent({ skipped: true, imageUrl, id: item.id, fileExtension });
       continue;
     }
+
     // 保存文件
     await fs.writeFile(filePath, fileBuffer);
+    const wall = new Wall();
+    wall.set("creatorId", "reptile");
+    wall.set("path", process.env.IMAGEPREFIX + "/static/" + fileName);
+    wall.set("username", "");
+    wall.set("avatar", "");
+    wall.set("postId", "");
+    wall.set("frequency", 1);
+    wall.set("source", "DuiTangData");
+    wall.set("sourceId", item.id);
+    wall.set("sourcePath", imageUrl);
+    const afterInfo = await wall.save(null, { useMasterKey: true });
     await delay(1700);
     sendEvent({
       imageUrl,
+      afterInfo,
       fileExtension,
-      id: records[i].id,
+      id: item.id,
       msg: "保存成功！",
     });
   }
   res.end();
-  req.on("close", () => {
-    console.log("断开");
-  });
 });
 
 const delay = (ms = 5000) => {

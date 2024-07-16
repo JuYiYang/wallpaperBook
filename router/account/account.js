@@ -18,7 +18,14 @@ Router.get("/info", async (req, res) => {
 // 修改用户信息
 Router.put("/info", async (req, res) => {
   try {
-    const safeField = ["nickName", "birthday", "sex", "motto", "preference"];
+    const safeField = [
+      "nickName",
+      "birthday",
+      "sex",
+      "avatar",
+      "motto",
+      "preference",
+    ];
     const currentUser = Parse.User.current();
     for (const key in req.body) {
       let val = req.body[key];
