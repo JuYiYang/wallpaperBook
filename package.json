@@ -4,7 +4,8 @@
   "description": "this is a server",
   "main": "index.js",
   "scripts": {
-    "dev": "nodemon bin/"
+    "dev": "nodemon bin/",
+    "dashboard": "parse-dashboard --config ./config/parse-dashboard-config.json"
   },
   "repository": {
     "type": "git",

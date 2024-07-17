@@ -72,7 +72,7 @@ Router.post(
         "https://api.dicebear.com/9.x/pixel-art/png?seed=" +
           (Math.random() * 1000).toFixed()
     );
-    user.set("nickName", query.username);
+    user.set("nickName", query.username || "momo");
     try {
       await user.signUp(null, { useMasterKey: true });
       res.customSend({ success: "Success!" });

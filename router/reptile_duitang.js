@@ -65,6 +65,7 @@ const reqDuiTangData = async (query, sendEvent) => {
     reptileRecord.set("req_data_start", query.next_start);
     reptileRecord.set("req_status", "成功");
     reptileRecord.set("req_query", query);
+    reptileRecord.set("key", query.kw);
     reptileRecord.set("req_status_desc", "");
 
     for (let i = 0; i < result.object_list.length; i++) {
@@ -105,7 +106,8 @@ const reqDuiTangData = async (query, sendEvent) => {
     }
     if (!!next_start && next_start > 0) {
       console.log(next_start);
-      sendEvent({ next_start, ms: 5000 });
+      let ms = 3000;
+      sendEvent({ next_start, ms });
       timer = setTimeout(
         () =>
           reqDuiTangData(
@@ -115,7 +117,7 @@ const reqDuiTangData = async (query, sendEvent) => {
             },
             sendEvent
           ),
-        5000
+        ms
       );
     } else {
       return 0;
@@ -151,6 +153,11 @@ Router.get("/duitang", async (req, res) => {
 
   let next_start = req.query.next_start;
   let current = req.query.current;
+  if (current > keyWords.length - 1) {
+    sendEvent({ l: keyWords.length, c: current, a: keyWords[current] });
+    res.end();
+    return;
+  }
   console.log("当前值：" + keyWords[current]);
   try {
     // for (let i = 0; i < keyWords.length; i++) {
@@ -246,7 +253,7 @@ Router.get("/downloadDuiTang", async (req, res) => {
     wall.set("sourceId", item.id);
     wall.set("sourcePath", imageUrl);
     const afterInfo = await wall.save(null, { useMasterKey: true });
-    await delay(1700);
+    await delay(700);
     sendEvent({
       imageUrl,
       afterInfo,
@@ -257,8 +264,26 @@ Router.get("/downloadDuiTang", async (req, res) => {
   }
   res.end();
 });
+Router.get("/getReptileRecord", async (req, res) => {
+  // 计算跳过的记录数和限制返回的记录数
+  const { page = 1, pageSize = 5 } = req.query;
 
-const delay = (ms = 5000) => {
+  // 计算需要跳过的数据量
+  const skip = (page - 1) * pageSize;
+
+  const ReptileRecord = Parse.Object.extend("ReptileRecord");
+
+  const query = new Parse.Query(ReptileRecord);
+  query.skip(skip);
+  query.limit(parseInt(pageSize));
+  const total = await query.count({ useMasterKey: true });
+  const records = await query.find();
+  res.customSend({
+    records,
+    total,
+  });
+});
+const delay = (ms = 3000) => {
   return new Promise((resolve, reject) => {
     setTimeout(() => {
       resolve();
