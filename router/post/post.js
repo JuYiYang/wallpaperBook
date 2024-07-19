@@ -128,9 +128,13 @@ Router.get("/getAllPost", async (req, res) => {
   const postQuery = new Parse.Query(Post);
   postQuery.limit(parseInt(pageSize));
   postQuery.skip(skip);
-
-  postQuery.descending("createdAt");
-  const postResult = await postQuery.find();
+  const postResult = await postQuery
+    .skip(skip)
+    .limit(parseInt(pageSize))
+    // .descending("createdAt") // 按创建时间降序排序
+    .descending("commentCount") // 按评论数降序排序
+    // .descending("likeCount") // 按点赞数降序排序
+    .find();
 
   let postRecords = [];
   for (let i = 0; i < postResult.length; i++) {

@@ -7,10 +7,28 @@ const Router = express.Router();
 
 // 查询用户信息
 Router.get("/info", async (req, res) => {
-  const { sessionToken, className, __type, ACL, ...userInfo } =
-    req.user.toJSON();
+  const {
+    sessionToken,
+    className,
+    __type,
+    ACL,
+    createdAt,
+    updatedAt,
+    ...userInfo
+  } = req.user.toJSON();
+
+  const UserMilestone = Parse.Object.extend("UserMilestone");
+  const query = new Parse.Query(UserMilestone);
+  query.equalTo("creatorId", userInfo.objectId);
+  let milestone = await query.first({ useMasterKey: true });
+  const milestoneInfo = milestone.toJSON();
+  delete milestoneInfo.createdAt;
+  delete milestoneInfo.updatedAt;
+  delete milestoneInfo.objectId;
+  delete milestoneInfo.creatorId;
   res.customSend({
     ...userInfo,
+    ...milestoneInfo,
     last_login_at: req.user.get("last_login_at"),
   });
 });
@@ -30,10 +48,28 @@ Router.put("/info", async (req, res) => {
     for (const key in req.body) {
       let val = req.body[key];
       if (safeField.includes(key)) {
-        currentUser.set(key, val);
+        if (val || (typeof val === String && val.length)) {
+          currentUser.set(key, val);
+        }
       }
     }
-    await currentUser.save(null, { useMasterKey: true });
+    const UserMilestone = Parse.Object.extend("UserMilestone");
+    const query = new Parse.Query(UserMilestone);
+    query.equalTo("creatorId", req.user.id);
+    query
+      .first({ useMasterKey: true })
+      .then((info) => {
+        if (info.get("firstSetting")) return;
+        info.set("firstSetting", true);
+        info.save(null, { useMasterKey: true }).catch((err) => {
+          console.log("保存fristSetting失败", err);
+        });
+      })
+      .catch((err) => {
+        console.log("设置fristSetting失败", err);
+      });
+
+    // await currentUser.save(null, { useMasterKey: true });
     res.customSend("success");
   } catch (error) {
     res.customErrorSend(error.message, error.code);

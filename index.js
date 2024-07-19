@@ -13,7 +13,15 @@ app.use("/static", express.static(path.join(__dirname, "upload", "images")));
 
 app.set("trust proxy", ["loopback", "192.168.0.0/24"]);
 
-const { Account, Login, Role, Post, Reptile, Wall } = require("./router/index");
+const {
+  Account,
+  Login,
+  Role,
+  Post,
+  Reptile,
+  Wall,
+  VerifyEmail,
+} = require("./router/index");
 const {
   responseMiddleware,
   crossDomainMiddlewar,
@@ -37,8 +45,10 @@ app.use("/role", authenticateMiddleware, Role);
 app.use("/post", authenticateMiddleware, Post);
 app.use("/wall", Wall);
 app.use("/reptile", Reptile);
+app.use("/verifyEmail", VerifyEmail);
 app.use("*", (req, res) => {
-  res.status(404).sendFile(path.join(__dirname, "public", "404.html"));
+  // res.status(404).sendFile(path.join(__dirname, "public", "404.html"));
+  res.status(404).send("/warning");
 });
 // app.use("/like", authenticateMiddleware, Like);
 

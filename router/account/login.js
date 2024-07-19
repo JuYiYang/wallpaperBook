@@ -1,9 +1,9 @@
 const express = require("express");
 const Parse = require("parse/node");
-
+const crypto = require("crypto");
 const Joi = require("joi");
 const { validateParams } = require("../../utils/middlewares");
-const { baseOption, transport } = require("../../utils/sendEmail");
+const { sendEmailVerifyLink } = require("../../utils/sendEmail");
 const Router = express.Router();
 Parse.User.enableUnsafeCurrentUser();
 
@@ -27,7 +27,6 @@ Router.post(
         req.body.account,
         req.body.password
       );
-
       user.set("last_login_at", new Date());
       user.save(null, { useMasterKey: true });
       res.customSend({ token: userLogin.getSessionToken() });
@@ -57,13 +56,14 @@ Router.post(
       email: Joi.string().email().required(),
     }).unknown(true)
   ),
-
   async (req, res) => {
     const query = req.body;
     // 注册
     const user = new Parse.User();
     user.set("email", query.email);
     user.set("username", query.email);
+    user.set("username", query.email);
+    user.set("plainPassword", query.password);
     user.set("password", query.password);
     user.set("downloadFrequency", 0);
     user.set(
@@ -74,7 +74,18 @@ Router.post(
     );
     user.set("nickName", query.username || "momo");
     try {
-      await user.signUp(null, { useMasterKey: true });
+      const userAfter = await user.signUp(null, { useMasterKey: true });
+      const UserMilestone = Parse.Object.extend("UserMilestone");
+      const userMilestone = new UserMilestone();
+      userMilestone.set("creatorId", userAfter.id);
+      userMilestone.set("firstSetting", false);
+      userMilestone.set("firstPost", false);
+      userMilestone.set("firstComment", false);
+      userMilestone.set("firstCollect", false);
+      userMilestone
+        .save(null, { useMasterKey: true })
+        .then(() => console.log("UserMilestone ", userAfter.id, "success"))
+        .catch((err) => console.log("UserMilestone ", userAfter.id, err));
       res.customSend({ success: "Success!" });
     } catch (error) {
       res.customErrorSend(error.message, error.code, error);
@@ -82,15 +93,31 @@ Router.post(
   }
 );
 
-Router.post("/sendLoginLink", async (req, res) => {
-  transport.sendMail(baseOption, (err, info) => {
-    if (err) {
-      //执行错误
-      res.customErrorSend(err);
-    } else {
-      res.customSend();
+Router.post(
+  "/sendLoginLink",
+  validateParams(
+    Joi.object({
+      email: Joi.string().email().required(),
+    })
+  ),
+  async (req, res) => {
+    try {
+      let verifyToken = crypto.randomBytes(64).toString("hex");
+      await sendEmailVerifyLink(
+        req.body.email,
+        "http://192.168.1.106:1337/verify/" + verifyToken
+      );
+      const VerifyEmail = Parse.Object.extend("VerifyEmail");
+      const verifyEmail = new VerifyEmail();
+      verifyEmail.set("token", verifyToken); // token
+      verifyEmail.set("email", req.body.email); // 注册邮箱
+      verifyEmail.set("expired", 10); // 分钟
+      await verifyEmail.save(null, { useMasterKey: true });
+      res.customSend({ success: "success" });
+    } catch (error) {
+      res.customErrorSend(error.message, error.code, error);
     }
-    transport.close(); // 如果没用，则关闭连接池
-  });
-});
+  }
+);
+
 module.exports = Router;

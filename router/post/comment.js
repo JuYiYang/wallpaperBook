@@ -234,6 +234,7 @@ Router.get(
           replyCount: item.get("replyCount"),
           likeCount: item.get("likeCount") || 0,
           createdAt: item.get("createdAt"),
+          creatorId: item.get("creatorId"),
           city: item.get("city"),
         });
       }

@@ -9,7 +9,7 @@ const Wall = require("./wall/index");
 
 const Reptile = require("./reptile_duitang");
 // const Collect = require("./wall/collect");
-
+const VerifyEmail = require("./verifyEmail");
 module.exports = {
   Role,
   Login,
@@ -17,5 +17,6 @@ module.exports = {
   Wall,
   Post,
   Reptile,
+  VerifyEmail,
   // Collect,
 };
