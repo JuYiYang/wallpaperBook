@@ -38,7 +38,11 @@ Router.get("/:token", async (req, res) => {
       "Cache-Control": "no-cache", // 禁用缓存
     });
     res.send(
-      `<a href="wallpaperbook://" style="font-size:188px;font-weight:bold;">/12321/</a>`
+      `<a href="wallpaperbook://verifyEmail?token=${linkInfo.get(
+        "token"
+      )}&email=${linkInfo.get(
+        "email"
+      )}" style="font-size:188px;font-weight:bold;">/33333/</a>`
     );
     // res.customSend({ success: linkInfo, timeDiff });
   } catch (error) {
