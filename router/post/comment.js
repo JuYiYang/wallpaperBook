@@ -231,7 +231,7 @@ Router.get(
           username: item.get("username"),
           comment: item.get("comment"),
           replyChildren: [],
-          replyCount: item.get("replyCount"),
+          replyCount: item.get("replyCount") || 0,
           likeCount: item.get("likeCount") || 0,
           createdAt: item.get("createdAt"),
           creatorId: item.get("creatorId"),

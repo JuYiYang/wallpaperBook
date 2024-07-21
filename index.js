@@ -45,7 +45,7 @@ app.use("/role", authenticateMiddleware, Role);
 app.use("/post", authenticateMiddleware, Post);
 app.use("/wall", Wall);
 app.use("/reptile", Reptile);
-app.use("/verifyEmail", VerifyEmail);
+app.use("/verify", VerifyEmail);
 app.use("*", (req, res) => {
   // res.status(404).sendFile(path.join(__dirname, "public", "404.html"));
   res.status(404).send("/warning");

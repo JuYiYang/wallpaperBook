@@ -33,6 +33,10 @@ Router.get("/:token", async (req, res) => {
         500
       );
     }
+    if (!linkInfo.get("isInvalid")) {
+      return res.customErrorSend("Have been used", 500);
+    }
+
     res.set({
       "Content-Type": "text/html; charset=utf-8", // 指定内容类型为 HTML，并设置字符集为 UTF-8
       "Cache-Control": "no-cache", // 禁用缓存
@@ -42,7 +46,7 @@ Router.get("/:token", async (req, res) => {
         "token"
       )}&email=${linkInfo.get(
         "email"
-      )}" style="font-size:188px;font-weight:bold;">/33333/</a>`
+      )}" style="font-size:188px;font-weight:bold;">/点击去往APP激活/</a>`
     );
     // res.customSend({ success: linkInfo, timeDiff });
   } catch (error) {

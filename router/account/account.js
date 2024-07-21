@@ -44,6 +44,7 @@ Router.put("/info", async (req, res) => {
       "motto",
       "preference",
     ];
+    console.log(req.body);
     const currentUser = Parse.User.current();
     for (const key in req.body) {
       let val = req.body[key];
@@ -69,7 +70,7 @@ Router.put("/info", async (req, res) => {
         console.log("设置fristSetting失败", err);
       });
 
-    // await currentUser.save(null, { useMasterKey: true });
+    await currentUser.save(null, { useMasterKey: true });
     res.customSend("success");
   } catch (error) {
     res.customErrorSend(error.message, error.code);
