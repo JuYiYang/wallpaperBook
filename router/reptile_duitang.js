@@ -244,7 +244,7 @@ Router.get("/downloadDuiTang", async (req, res) => {
     await fs.writeFile(filePath, fileBuffer);
     const wall = new Wall();
     wall.set("creatorId", "reptile");
-    wall.set("path", process.env.IMAGEPREFIX + "/static/" + fileName);
+    wall.set("path", process.env.DOMAINNAME + "/static/" + fileName);
     wall.set("username", "");
     wall.set("avatar", "");
     wall.set("postId", "");

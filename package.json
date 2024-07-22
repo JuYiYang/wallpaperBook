@@ -30,6 +30,7 @@
     "fs-extra": "^11.2.0",
     "joi": "^17.13.1",
     "multer": "^1.4.5-lts.1",
+    "node-cron": "^3.0.3",
     "nodemailer": "^6.9.14",
     "nodemailer-smtp-transport": "^2.7.4",
     "parse-server": "^7.0.0",

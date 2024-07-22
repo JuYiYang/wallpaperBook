@@ -52,7 +52,7 @@ const createPost = async (images, user, body) => {
     const wallInfo = new PostWall();
     if (imageSizes.length)
       maxPostHeight = Math.max(maxPostHeight, imageSizes[i].height);
-    let filePath = process.env.IMAGEPREFIX + "/static/" + newFilename;
+    let filePath = process.env.DOMAINNAME + "/static/" + newFilename;
     // 设置图片信息
     wallInfo.set("imageName", newFilename); // 图片名称包含后缀
     wallInfo.set("imageUrl", filePath); // 图片可访问路径
@@ -126,15 +126,11 @@ Router.get("/getAllPost", async (req, res) => {
   const skip = (page - 1) * pageSize;
 
   const postQuery = new Parse.Query(Post);
-  postQuery.limit(parseInt(pageSize));
   postQuery.skip(skip);
-  const postResult = await postQuery
-    .skip(skip)
-    .limit(parseInt(pageSize))
-    // .descending("createdAt") // 按创建时间降序排序
-    .descending("commentCount") // 按评论数降序排序
-    // .descending("likeCount") // 按点赞数降序排序
-    .find();
+  postQuery.limit(parseInt(pageSize));
+  postQuery.descending("createdAt");
+  postQuery.descending("weight");
+  const postResult = await postQuery.find(); // 按创建时间降序排序
 
   let postRecords = [];
   for (let i = 0; i < postResult.length; i++) {

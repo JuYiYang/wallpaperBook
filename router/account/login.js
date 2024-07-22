@@ -89,7 +89,7 @@ Router.post(
       }
 
       let verifyToken = crypto.randomBytes(64).toString("hex");
-      let link = process.env.IMAGEPREFIX + "/verify/" + verifyToken;
+      let link = process.env.DOMAINNAME + "/verify/" + verifyToken;
       await sendEmailVerifyLink(req.body.email, link);
       const VerifyEmail = Parse.Object.extend("VerifyEmail");
       const verifyEmail = new VerifyEmail();
@@ -196,7 +196,6 @@ const createdUserMilestone = async (userId) => {
   userMilestone.set("firstCollect", false);
   userMilestone
     .save(null, { useMasterKey: true })
-    .then(() => console.log("UserMilestone ", userId, "success"))
     .catch((err) => console.log("UserMilestone ", userId, err));
 };
 module.exports = Router;

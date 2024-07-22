@@ -4,7 +4,7 @@ const path = require("path");
 const ParseServer = require("parse-server").ParseServer;
 const config = require("./config/config");
 require("dotenv").config();
-
+require("./router/scheduledTask");
 const bodyParser = require("body-parser");
 
 const app = express();

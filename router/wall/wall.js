@@ -30,7 +30,7 @@ Router.post(
       wall.set(
         "path",
         req.files
-          .map((image) => process.env.IMAGEPREFIX + "/static/" + image.filename)
+          .map((image) => process.env.DOMAINNAME + "/static/" + image.filename)
           .join(",")
       );
 
