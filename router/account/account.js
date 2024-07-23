@@ -1,6 +1,10 @@
 const dayjs = require("dayjs");
 const express = require("express");
 const Parse = require("parse/node");
+const fs = require("fs-extra");
+const crypto = require("crypto");
+const multer = require("multer");
+const path = require("path");
 const Joi = require("joi");
 const { validateParams } = require("../../utils/middlewares");
 const Router = express.Router();
@@ -76,6 +80,38 @@ Router.put("/info", async (req, res) => {
     res.customErrorSend(error.message, error.code);
   }
 });
+// 头像
+Router.put(
+  "/updateAvatar",
+  multer({
+    storage: multer.diskStorage({
+      destination: (req, file, cb) => {
+        const uploadDir = path.join(__dirname, "../../upload", "avatar");
+        // 检查目录是否存在
+        fs.ensureDirSync(uploadDir);
+        // 目录存在或已成功创建，调用回调函数
+        cb(null, uploadDir);
+      },
+      filename: (req, file, cb) => {
+        const name = crypto.randomBytes(12).toString("hex");
+        const fileExtension = path.extname(file.originalname);
+        console.log(`${name}${fileExtension}`);
+        cb(null, `${name}${fileExtension}`);
+      },
+    }),
+  }).single("avatar"),
+  async (req, res) => {
+    try {
+      const fileUrl = `${process.env.DOMAINNAME}/avatar/${req.file.filename}`;
+      const currentUser = Parse.User.current();
+      currentUser.set("avatar", fileUrl);
+      await currentUser.save(null, { useMasterKey: true });
+      res.customSend("success");
+    } catch (error) {
+      res.customErrorSend(error.message, error.code);
+    }
+  }
+);
 
 // 下载记录
 Router.post(

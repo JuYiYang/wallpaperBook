@@ -104,7 +104,7 @@ Router.post(
     }
   }
 );
-
+// 激活账号
 Router.post(
   "/activeAccount",
   validateParams(

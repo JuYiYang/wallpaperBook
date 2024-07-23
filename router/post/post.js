@@ -12,26 +12,21 @@ const PostWall = Parse.Object.extend("PostWall");
 const PostContentInfo = Parse.Object.extend("PostContent");
 
 // 创建帖子
-Router.post(
-  "/creatdPost",
-  multiple,
-
-  async (req, res) => {
-    if (
-      (!req.files || !req.files.length) &&
-      (!req.body.content || !req.body.content.length)
-    ) {
-      return res.customErrorSend("缺少必要参数！");
-    }
-    try {
-      await createPost(req.files, req.user, req.body);
-      res.customSend("success");
-    } catch (err) {
-      console.log(err);
-      res.customErrorSend(err);
-    }
+Router.post("/creatdPost", multiple, async (req, res) => {
+  if (
+    (!req.files || !req.files.length) &&
+    (!req.body.content || !req.body.content.length)
+  ) {
+    return res.customErrorSend("缺少必要参数！");
   }
-);
+  try {
+    await createPost(req.files, req.user, req.body);
+    res.customSend("success");
+  } catch (err) {
+    console.log(err);
+    res.customErrorSend(err);
+  }
+});
 
 const createPost = async (images, user, body) => {
   const imageIds = [];

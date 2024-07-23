@@ -10,7 +10,7 @@ const bodyParser = require("body-parser");
 const app = express();
 
 app.use("/static", express.static(path.join(__dirname, "upload", "images")));
-
+app.use("/avatar", express.static(path.join(__dirname, "upload", "avatar")));
 app.set("trust proxy", ["loopback", "192.168.0.0/24"]);
 
 const {

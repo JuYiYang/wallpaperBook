@@ -1,7 +1,6 @@
 const cron = require("node-cron");
 
-// cron.schedule("5 * * * * *", );
-const c = async () => {
+const updateWeight = async () => {
   console.log("开始更新帖子权重");
 
   try {
@@ -49,13 +48,14 @@ async function updatePostWeight(postId) {
 }
 
 function calculateWeight(likeCount, commentCount, viewCount, isRecommended) {
-  const likeWeight = 0.4;
-  const commentWeight = 0.1;
-  const viewWeight = 0.1;
-  const recommendWeight = 0.5;
-  const randomFactor = 0.08;
+  const likeWeight = 0.4; // 喜欢数权重
+  const commentWeight = 0.1; // 评论数权重
+  const coefficient = 1; // 固定权重
+  const viewWeight = 0.1; // 浏览量权重
+  const recommendWeight = 0.5; // 推荐权重
   return parseFloat(
     (
+      coefficient +
       likeCount * likeWeight +
       commentCount * commentWeight +
       viewCount * viewWeight +
@@ -63,5 +63,6 @@ function calculateWeight(likeCount, commentCount, viewCount, isRecommended) {
     ).toFixed(4)
   );
 }
+cron.schedule("0 30 * * * *", updateWeight);
 
-setTimeout(() => c(), 100);
+setTimeout(updateWeight, 120);
