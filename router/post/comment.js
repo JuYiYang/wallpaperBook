@@ -134,7 +134,7 @@ Router.post(
     }
   }
 );
-// 删除评论
+// 删除一级评论
 Router.delete(
   "/delPostComment",
   validateParams(
@@ -144,33 +144,54 @@ Router.delete(
   ),
   async (req, res) => {
     try {
-      const Post = Parse.Object.extend("Post");
-      const PostComment = Parse.Object.extend("PostComment");
-      const commentQuery = new Parse.Query(PostComment);
-      const postQuery = new Parse.Query(Post);
+      const commentQuery = new Parse.Query("PostComment");
+      const postQuery = new Parse.Query("Post");
       const comment = await commentQuery.get(req.body.id);
       const singlePost = await postQuery.get(comment.get("postId"));
       if (comment.get("creatorId") === req.user.id) {
-        singlePost.increment("commentCount", -1);
+        let count = comment.get("replyCount");
+        singlePost.increment("commentCount", -(count + 1));
         await comment.destroy();
         await singlePost.save(null, { useMasterKey: true });
-        if (comment.get("vestIn") === 1) {
-          const parentCommentQuery = new Parse.Query(PostComment);
-          parentCommentQuery
-            .get(comment.get("parentId"))
-            .then((data) => {
-              data.increment("replyCount", -1);
-              console.log("cb 删除评论 减少replyCount次数成功：");
-              data.save(null, { useMasterKey: true });
-            })
-            .catch((err) => {
-              console.log("cb 删除评论 减少replyCount次数失败：", err);
-            });
-        }
+
         res.customSend("cancel");
       } else {
         res.customErrorSend("not authority");
       }
+    } catch (error) {
+      res.customErrorSend(error.message, error.code);
+    }
+  }
+);
+// 删除二级评论
+Router.delete(
+  "/delReply",
+  validateParams(
+    Joi.object({
+      id: Joi.required(),
+    })
+  ),
+  async (req, res) => {
+    try {
+      const replyQuery = new Parse.Query("PostReplyComment");
+      const replyComment = await replyQuery.get(req.body.id);
+      if (replyComment.get("creatorId") !== req.user.id) {
+        return res.customErrorSend("not authority");
+      }
+      const postQuery = new Parse.Query("Post");
+      const commentQuery = new Parse.Query("PostComment");
+      const comment = await commentQuery.get(replyComment.get("parentId"));
+      const singlePost = await postQuery.get(replyComment.get("postId"));
+      comment.increment("replyCount", -1);
+      singlePost.increment("commentCount", -1);
+      comment.save(null, { useMasterKey: true });
+      singlePost.save(null, { useMasterKey: true });
+      await replyComment.destroy();
+      res.customSend({
+        comment,
+        singlePost,
+        replyComment,
+      });
     } catch (error) {
       res.customErrorSend(error.message, error.code);
     }
@@ -294,6 +315,7 @@ Router.get(
         likeCount: item.get("likeCount") || 0,
         replyInfo: item.get("replyInfo"),
         createdAt: item.get("createdAt"),
+        creatorId: item.get("creatorId"),
         city: item.get("city"),
       });
     }

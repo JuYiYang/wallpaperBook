@@ -22,7 +22,7 @@ Router.post(
       query.equalTo("username", req.body.account);
       const user = await query.first({ useMasterKey: true });
       //单一会话
-      await invalidateUserSessions(user);
+      // await invalidateUserSessions(user);
 
       const userLogin = await Parse.User.logIn(
         req.body.account,

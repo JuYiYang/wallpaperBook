@@ -65,4 +65,4 @@ function calculateWeight(likeCount, commentCount, viewCount, isRecommended) {
 }
 cron.schedule("0 30 * * * *", updateWeight);
 
-setTimeout(updateWeight, 120);
+// setTimeout(updateWeight, 120);

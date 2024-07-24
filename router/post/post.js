@@ -166,6 +166,7 @@ Router.get("/getAllPost", async (req, res) => {
       content: content?.get("content"),
       walls: userWalls,
       isLike: !!likes.length,
+      weight: singlePost.weight,
       userInfo: {
         avatar: singlePost.get("creatorAvatar"),
         username: singlePost.get("creatorName"),

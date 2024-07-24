@@ -52,7 +52,7 @@ Router.put(
 );
 
 // 查询用户点赞的帖子
-Router.get("/getMylikePost", async (req, res) => {
+Router.get("/getMyLikePost", async (req, res) => {
   try {
     // 计算跳过的记录数和限制返回的记录数
     const { page = 1, pageSize = 10 } = req.query;
@@ -71,21 +71,45 @@ Router.get("/getMylikePost", async (req, res) => {
     let records = [];
     for (let i = 0; i < record.length; i++) {
       let item = record[i];
-      const PostWall = Parse.Object.extend("PostWall");
-      const PostContentInfo = Parse.Object.extend("PostContent");
+      //原帖信息
+      const postQuery = new Parse.Query("Post");
+      postQuery.equalTo("objectId", item.get("postId"));
+      let postInfo = await postQuery.first({ useMasterKey: true });
+      if (!postInfo) {
+        const postLike = Parse.Object.extend("PostLike");
+        const query = new Parse.Query(postLike);
+        query.equalTo("creatorId", req.user.id);
+        query.equalTo("postId", item.get("postId"));
+        const reocrds = await query.find({ useMasterKey: true });
+        if (reocrds.length > 0) {
+          Parse.Object.destroyAll(reocrds).then((res) => {
+            console.log("点赞记录帖子信息丢失，已清除", reocrds);
+          });
+        }
+        continue;
+      }
       // 图
-      const wallQuery = new Parse.Query(PostWall);
+      const wallQuery = new Parse.Query("PostWall");
       wallQuery.containedIn("objectId", item.get("wallId").split(","));
       // 文
-      const contentQuery = new Parse.Query(PostContentInfo);
+      const contentQuery = new Parse.Query("PostContent");
       contentQuery.equalTo("objectId", item.get("contentId"));
+
       let content = await contentQuery.first({ useMasterKey: true });
       let walls = await wallQuery.find({ useMasterKey: true });
+
       records.push({
         id: item.id,
+        userInfo: postInfo
+          ? {
+              avatar: postInfo.get("creatorAvatar"),
+              username: postInfo.get("creatorName"),
+              id: postInfo.get("creator"),
+            }
+          : null,
         createdAt: item.get("createdAt"),
         postId: item.get("postId"),
-        content: content.get("content"),
+        content: content?.get("content") || "",
         walls: walls.map((wall) => {
           return {
             id: wall.id,
@@ -95,12 +119,12 @@ Router.get("/getMylikePost", async (req, res) => {
         }),
       });
     }
-
     res.customSend({
       records,
-      nextPage: page * pageSize < total,
+      total,
     });
   } catch (error) {
+    console.log(error);
     res.customErrorSend(error.message, error.code);
   }
 });
