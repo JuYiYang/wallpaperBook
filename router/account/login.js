@@ -3,6 +3,7 @@ const Parse = require("parse/node");
 const dayjs = require("dayjs");
 const crypto = require("crypto");
 const Joi = require("joi");
+const { OAuth2Client } = require("google-auth-library");
 const { validateParams } = require("../../utils/middlewares");
 const { sendEmailVerifyLink } = require("../../utils/sendEmail");
 const Router = express.Router();
@@ -69,6 +70,28 @@ Router.post(
     }
   }
 );
+const client = new OAuth2Client(
+  "86202189237-oclofjgougd3222norsd4kj1ckd1nd8p.apps.googleusercontent.com"
+);
+Router.post("/googleSignIn", async (req, res) => {
+  const { idToken } = req.body;
+
+  console.log(idToken);
+  try {
+    const ticket = await client.verifyIdToken({
+      idToken,
+      audience:
+        "86202189237-oclofjgougd3222norsd4kj1ckd1nd8p.apps.googleusercontent.com",
+    });
+    const payload = ticket.getPayload();
+
+    // 验证成功，处理用户信息
+    res.status(200).send(payload);
+  } catch (error) {
+    console.error(error);
+    res.status(401).send("Invalid token");
+  }
+});
 
 Router.post(
   "/sendLoginLink",
