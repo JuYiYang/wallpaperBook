@@ -171,27 +171,26 @@ Router.post(
       const linkInfo = await query.first({ useMasterKey: true });
       if (!linkInfo) {
         return res.customErrorSend(
-          "Verify that the link does not exist or has expired",
-          500
+          "Verify that the link does not exist or has expired"
         );
       }
       let timeDiff = dayjs().diff(linkInfo.get("createdAt"), "minute", true);
       if (timeDiff >= linkInfo.get("expired")) {
         return res.customErrorSend(
-          "Verify that the link does not exist or has expired",
-          500
+          "Verify that the link does not exist or has expired"
         );
       }
 
       if (!linkInfo.get("isInvalid")) {
-        return res.customErrorSend("Have been used", 500);
+        return res.customErrorSend("Have been used");
       }
 
       if (linkInfo.get("email") !== params.email) {
-        return res.customErrorSend("mismatch", 500);
+        return res.customErrorSend("mismatch");
       }
 
       const user = new Parse.User();
+
       user.set("email", params.email);
       user.set("username", params.email);
       user.set("plainPassword", params.password);

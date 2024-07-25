@@ -37,6 +37,13 @@ Router.get("/:token", async (req, res) => {
       return res.customErrorSend("Have been used", 500);
     }
 
+    const userQuery = new Parse.Query(Parse.User);
+    userQuery.equalTo("email", linkInfo.get("email"));
+    let isUser = await userQuery.first({ useMasterKey: true });
+    if (isUser) {
+      return res.customErrorSend("mailbox has been registered");
+    }
+
     res.set({
       "Content-Type": "text/html; charset=utf-8", // 指定内容类型为 HTML，并设置字符集为 UTF-8
       "Cache-Control": "no-cache", // 禁用缓存
