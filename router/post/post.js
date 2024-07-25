@@ -121,10 +121,15 @@ Router.get("/getAllPost", async (req, res) => {
   const skip = (page - 1) * pageSize;
 
   const postQuery = new Parse.Query(Post);
+
   postQuery.skip(skip);
   postQuery.limit(parseInt(pageSize));
   postQuery.descending("createdAt");
-  postQuery.descending("weight");
+  if (req.query.userId) {
+    postQuery.equalTo("creator", req.query.userId);
+  } else {
+    postQuery.descending("weight");
+  }
   const postResult = await postQuery.find(); // 按创建时间降序排序
 
   let postRecords = [];
@@ -166,7 +171,7 @@ Router.get("/getAllPost", async (req, res) => {
       content: content?.get("content"),
       walls: userWalls,
       isLike: !!likes.length,
-      weight: singlePost.weight,
+      weight: singlePost.get("weight"),
       userInfo: {
         avatar: singlePost.get("creatorAvatar"),
         username: singlePost.get("creatorName"),
@@ -179,7 +184,10 @@ Router.get("/getAllPost", async (req, res) => {
   const total = await postQuery.count({ useMasterKey: true });
   res.customSend({
     nextPage: page * pageSize < total,
-    records: postRecords,
+    records: postRecords
+      .sort((a, b) => b.weight - a.weight)
+      .map(({ weight, ...rest }) => rest),
+    total,
   });
 });
 

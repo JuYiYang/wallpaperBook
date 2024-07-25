@@ -6,6 +6,8 @@ const Joi = require("joi");
 const { OAuth2Client } = require("google-auth-library");
 const { validateParams } = require("../../utils/middlewares");
 const { sendEmailVerifyLink } = require("../../utils/sendEmail");
+
+const client = new OAuth2Client({ clientId: process.env.GOOGLEAUTHCLIENT });
 const Router = express.Router();
 Parse.User.enableUnsafeCurrentUser();
 
@@ -37,6 +39,7 @@ Router.post(
     }
   }
 );
+// 账户密码注册
 Router.post(
   "/register",
   validateParams(
@@ -70,29 +73,49 @@ Router.post(
     }
   }
 );
-const client = new OAuth2Client(
-  "86202189237-oclofjgougd3222norsd4kj1ckd1nd8p.apps.googleusercontent.com"
-);
+// Google login
 Router.post("/googleSignIn", async (req, res) => {
   const { idToken } = req.body;
-
-  console.log(idToken);
   try {
     const ticket = await client.verifyIdToken({
       idToken,
-      audience:
-        "86202189237-oclofjgougd3222norsd4kj1ckd1nd8p.apps.googleusercontent.com",
+      audience: [process.env.GOOGLEAUTHCLIENT],
     });
     const payload = ticket.getPayload();
-
-    // 验证成功，处理用户信息
-    res.status(200).send(payload);
+    if (dayjs().isAfter(dayjs.unix(payload.exp))) {
+      return res.customErrorSend("Faild information has expired");
+    }
+    const userQuery = new Parse.Query(Parse.User);
+    userQuery.equalTo("googleId", payload.sub);
+    let userRecord = await userQuery.first({ useMasterKey: true });
+    if (!userRecord) {
+      let password = crypto.randomBytes(5).toString("hex");
+      const user = new Parse.User();
+      user.set("email", payload.email);
+      user.set("username", payload.email);
+      user.set("plainPassword", password);
+      user.set("password", password);
+      user.set("autoPassword", true);
+      user.set("downloadFrequency", 0);
+      user.set("avatar", payload.picture);
+      user.set("nickName", payload.name);
+      user.set("googleId", payload.sub);
+      user.set("source", "google");
+      userRecord = await user.signUp(null, { useMasterKey: true });
+    }
+    const userLogin = await Parse.User.logIn(
+      userRecord.get("username"),
+      userRecord.get("plainPassword")
+    );
+    userRecord.set("last_login_at", new Date());
+    userRecord.save(null, { useMasterKey: true });
+    res.customSend({ token: userLogin.getSessionToken() });
   } catch (error) {
-    console.error(error);
-    res.status(401).send("Invalid token");
+    console.error("Google login failure", error);
+    res.customErrorSend("Google login failure");
   }
 });
-
+// 发送邮箱链接
 Router.post(
   "/sendLoginLink",
   validateParams(
@@ -189,7 +212,7 @@ Router.post(
         .catch((err) => console.log("失效验证链接error", err));
       res.customSend({ success: "success!" });
     } catch (error) {
-      res.customErrorSend(error.message, error.code, error);
+      res.customErrorSend(error.message, error.code);
     }
   }
 );
@@ -221,4 +244,5 @@ const createdUserMilestone = async (userId) => {
     .save(null, { useMasterKey: true })
     .catch((err) => console.log("UserMilestone ", userId, err));
 };
+
 module.exports = Router;
