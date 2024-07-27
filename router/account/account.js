@@ -95,7 +95,6 @@ Router.put(
       filename: (req, file, cb) => {
         const name = crypto.randomBytes(12).toString("hex");
         const fileExtension = path.extname(file.originalname);
-        console.log(`${name}${fileExtension}`);
         cb(null, `${name}${fileExtension}`);
       },
     }),
