@@ -150,7 +150,10 @@ Router.get("/getAllPost", async (req, res) => {
     const postLikeQuery = new Parse.Query(postLike);
     postLikeQuery.equalTo("creatorId", req.user.id);
     postLikeQuery.equalTo("postId", singlePost.id);
-
+    const followingQuery = new Parse.Query("Following");
+    followingQuery.equalTo("creatorId", req.user.id);
+    followingQuery.equalTo("followId", singlePost.get("creator"));
+    let follow = await followingQuery.first({ useMasterKey: true });
     let content = await contentQuery.first({ useMasterKey: true });
     let walls = await wallQuery.find({ useMasterKey: true });
     let likes = await postLikeQuery.find({ useMasterKey: true });
@@ -165,6 +168,7 @@ Router.get("/getAllPost", async (req, res) => {
 
     postRecords.push({
       id: singlePost.id,
+      follow: !!follow,
       createdAt: singlePost.get("createdAt"),
       like: singlePost.get("likeCount") || 0,
       maxPostHeight: singlePost.get("maxPostHeight"),
@@ -216,8 +220,14 @@ Router.get(
       let content = await contentQuery.first({ useMasterKey: true });
       let walls = await wallQuery.find({ useMasterKey: true });
 
+      const followingQuery = new Parse.Query("Following");
+      followingQuery.equalTo("creatorId", req.user.id);
+      followingQuery.equalTo("followId", singlePost.get("creator"));
+      let follow = await followingQuery.first({ useMasterKey: true });
+
       res.customSend({
         id: singlePost.id,
+        follow: !!follow,
         userInfo: {
           avatar: singlePost.get("creatorAvatar"),
           username: singlePost.get("creatorName"),

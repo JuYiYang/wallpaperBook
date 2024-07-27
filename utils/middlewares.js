@@ -1,14 +1,10 @@
 // 自定义响应方法
 exports.responseMiddleware = (req, res, next) => {
-  const defaultConfig = {
-    data: null,
-    msg: null,
-  };
-  res.customSend = (data) => {
+  res.customSend = (data, msg) => {
     const response = {
-      ...defaultConfig,
-      code: 200,
       data,
+      msg,
+      code: 200,
     };
     res.json(response);
   };

@@ -21,20 +21,18 @@ Router.get("/:token", async (req, res) => {
     const linkInfo = await query.first({ useMasterKey: true });
     if (!linkInfo) {
       return res.customErrorSend(
-        "Verify that the link does not exist or has expired",
-        500
+        "Verify that the link does not exist or has expired"
       );
     }
     let timeDiff = dayjs().diff(linkInfo.get("createdAt"), "minute", true);
 
     if (timeDiff >= linkInfo.get("expired")) {
       return res.customErrorSend(
-        "Verify that the link does not exist or has expired",
-        500
+        "Verify that the link does not exist or has expired"
       );
     }
     if (!linkInfo.get("isInvalid")) {
-      return res.customErrorSend("Have been used", 500);
+      return res.customErrorSend("Have been used");
     }
 
     const userQuery = new Parse.Query(Parse.User);
