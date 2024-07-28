@@ -33,7 +33,7 @@ const keyWords = [
 let timer;
 const Wall = Parse.Object.extend("Wall");
 const uploadDir = path.join(__dirname, "../upload", "network");
-const reqDuiTangData = async (query, sendEvent) => {
+const reqDuiTangData = async (query, sendEvent, current) => {
   const ReptileRecord = Parse.Object.extend("ReptileRecord");
   const reptileRecord = new ReptileRecord();
   const DuiTangData = Parse.Object.extend("DuiTangData");
@@ -82,31 +82,13 @@ const reqDuiTangData = async (query, sendEvent) => {
           duiTangData.set("source_id", item[key]);
           continue;
         }
-        // if (key == "favorite_count") {
-        //   let value = parseInt(item[key]);
-        //   duiTangData.set("favorite_count", Number.isNaN(value) ? 0 : value);
-        //   continue;
-        // }
-        // if (key == "buyable") {
-        //   // let value = parseInt(item[key]);
-        //   duiTangData.set("favorite_count", String(item[key]));
-        //   continue;
-        // }
-
-        // if (
-        //   typeof item[key] == "number" &&
-        //   !["oriAddDatetime", "add_datetime_ts", "sender_id"].includes(key)
-        // ) {
-        //   duiTangData.set(key, String(item[key]));
-        //   continue;
-        // }
         duiTangData.set(key, item[key]);
       }
       await duiTangData.save(null, { useMasterKey: true });
     }
     if (!!next_start && next_start > 0) {
       console.log(next_start);
-      let ms = 3000;
+      let ms = 1500;
       sendEvent({ next_start, ms });
       timer = setTimeout(
         () =>
@@ -115,12 +97,14 @@ const reqDuiTangData = async (query, sendEvent) => {
               ...query,
               start: next_start,
             },
-            sendEvent
+            sendEvent,
+            current
           ),
         ms
       );
     } else {
-      return 0;
+      // return 0;
+      await startKeywordRequests(current + 1, sendEvent);
     }
   } catch (err) {
     console.log(err);
@@ -136,6 +120,8 @@ const reqDuiTangData = async (query, sendEvent) => {
     reptileRecord.save(null, { useMasterKey: true });
     sendEvent({ msg: err });
     // return query.next_start;
+    console.log(err);
+    await startKeywordRequests(current + 1, sendEvent);
   } finally {
     reptileRecord.save(null, { useMasterKey: true });
   }
@@ -151,41 +137,8 @@ Router.get("/duitang", async (req, res) => {
     res.write(`data: ${JSON.stringify(data)}\n\n`);
   };
 
-  let next_start = req.query.next_start;
-  let current = req.query.current;
-  if (current > keyWords.length - 1) {
-    sendEvent({ l: keyWords.length, c: current, a: keyWords[current] });
-    res.end();
-    return;
-  }
-  console.log("当前值：" + keyWords[current]);
-  try {
-    // for (let i = 0; i < keyWords.length; i++) {
-    await reqDuiTangData(
-      {
-        kw: keyWords[current],
-        start: next_start,
-      },
-      sendEvent
-    );
-    // await delay();
-    sendEvent({ msg: "已完成" + keyWords[current] });
-    // }
-  } catch (err) {
-    console.log(err);
-    sendEvent({ err });
-  }
-  // sendEvent({ me: count });
-  // res.end();
-  // console.log(result);
-  // const interval = setInterval(() => {
-  //   sendEvent({ message: "Hello from the server!", timestamp: new Date() });
-  // }, 1000);
-
-  // feeds.forEach((element) => {
-  //   sendEvent(element);
-  // });
-
+  const current = parseInt(req.query.current) || 0;
+  await startKeywordRequests(current, sendEvent);
   req.on("close", () => {
     console.log("断开");
     // clearInterval(interval);
@@ -193,6 +146,27 @@ Router.get("/duitang", async (req, res) => {
   });
 });
 
+const startKeywordRequests = async (current, sendEvent) => {
+  if (current >= keyWords.length) {
+    sendEvent({ msg: "所有关键词已完成" });
+    return;
+  }
+
+  console.log("当前关键词：" + keyWords[current]);
+  try {
+    await reqDuiTangData(
+      {
+        kw: keyWords[current],
+        start: 0, // Starting point for each keyword
+      },
+      sendEvent,
+      current
+    );
+  } catch (err) {
+    console.log(err);
+    sendEvent({ err });
+  }
+};
 Router.get("/downloadDuiTang", async (req, res) => {
   let isClose = false;
   let current = 0;

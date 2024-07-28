@@ -157,4 +157,52 @@ Router.post(
   }
 );
 
+// 查询个人中心信息
+Router.get("/getUserImpact", async (req, res) => {
+  const userId = req.query.id || req.user.id;
+  console.log(userId);
+  try {
+    const userQuery = new Parse.Query(Parse.User);
+    const user = await userQuery.get(userId, {
+      useMasterKey: true,
+    });
+
+    const FollowQuery = new Parse.Query("Following");
+    FollowQuery.equalTo("creatorId", userId);
+
+    const beFollowQuery = new Parse.Query("Following");
+    beFollowQuery.equalTo("followId", userId);
+
+    const followingQuery = new Parse.Query("Following");
+    followingQuery.equalTo("creatorId", req.user.id);
+    followingQuery.equalTo("followId", userId);
+    let follow = await followingQuery.first({ useMasterKey: true });
+
+    const follows = await FollowQuery.count({ useMasterKey: true });
+    const beFollows = await beFollowQuery.count({ useMasterKey: true });
+
+    const postQuery = new Parse.Query("Post");
+    postQuery.equalTo("creator", userId);
+    const postResult = await postQuery.find({ useMasterKey: true });
+
+    let likes = 0;
+    for (let i = 0; i < postResult.length; i++) {
+      let item = postResult[i];
+      const postLikeQuery = new Parse.Query("PostLike");
+      postLikeQuery.equalTo("postId", item.id);
+      likes += await postLikeQuery.count({ useMasterKey: true });
+    }
+    res.customSend({
+      avatar: user.get("avatar"),
+      motto: user.get("motto"),
+      username: user.get("nickName"),
+      follows,
+      follow: !!follow,
+      beFollows,
+      likes,
+    });
+  } catch (error) {
+    res.customErrorSend(error.message, error.code);
+  }
+});
 module.exports = Router;

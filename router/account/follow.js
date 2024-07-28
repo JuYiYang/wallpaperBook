@@ -10,7 +10,7 @@ Router.put("/", async (req, res) => {
     const userQuery = new Parse.Query(Parse.User);
 
     // 查询当前用户是否存在
-    const user = await userQuery.get(req.body.id, { useMasterKey: true });
+    await userQuery.get(req.body.id, { useMasterKey: true });
 
     const query = new Parse.Query("Following");
     query.equalTo("creatorId", req.user.id);
@@ -19,14 +19,14 @@ Router.put("/", async (req, res) => {
 
     if (record) {
       await record.destroy({ useMasterKey: true });
-      res.customSend(null, "unfollow success");
+      res.customSend(false, "unfollow success");
     } else {
       const Following = Parse.Object.extend("Following");
       const following = new Following();
       following.set("creatorId", req.user.id);
       following.set("followId", req.body.id);
       await following.save(null, { useMasterKey: true });
-      res.customSend(null, "follow success!");
+      res.customSend(true, "follow success!");
     }
   } catch (error) {
     res.customErrorSend(error.message, error.code);
