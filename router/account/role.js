@@ -41,7 +41,7 @@ Router.post("/addUserRole", async (req, res) => {
         const roleQuery = new Parse.Query(Parse.Role);
         roleQuery.equalTo("name", req.body.roleName);
         roleQuery
-          .first()
+          .first({ useMasterKey: true })
           .then((role) => {
             if (role) {
               // 将用户添加到角色中
