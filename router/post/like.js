@@ -56,12 +56,12 @@ Router.get("/getMyLikePost", async (req, res) => {
   try {
     // 计算跳过的记录数和限制返回的记录数
     const { page = 1, pageSize = 10 } = req.query;
-
+    const userId = req.query.id || req.user.id;
     // 计算需要跳过的数据量
     const skip = (page - 1) * pageSize;
     const postLike = Parse.Object.extend("PostLike");
     const query = new Parse.Query(postLike);
-    query.equalTo("creatorId", req.user.id);
+    query.equalTo("creatorId", userId);
     query.limit(parseInt(pageSize));
     query.skip(skip);
     query.descending("createdAt");
@@ -78,7 +78,7 @@ Router.get("/getMyLikePost", async (req, res) => {
       if (!postInfo) {
         const postLike = Parse.Object.extend("PostLike");
         const query = new Parse.Query(postLike);
-        query.equalTo("creatorId", req.user.id);
+        query.equalTo("creatorId", userId);
         query.equalTo("postId", item.get("postId"));
         const reocrds = await query.find({ useMasterKey: true });
         if (reocrds.length > 0) {

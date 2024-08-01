@@ -38,22 +38,35 @@ Router.get("/list", async (req, res) => {
   if (!req.query.id) {
     return res.customErrorSend("Error");
   }
-
+  const { page = 1, pageSize = 10 } = req.query;
+  // 计算需要跳过的数据量
+  const skip = (page - 1) * pageSize;
   try {
     const userQuery = new Parse.Query(Parse.User);
 
     await userQuery.get(req.query.id, { useMasterKey: true });
 
     const query = new Parse.Query("Following");
-    query.equalTo("creatorId", req.query.id);
+    if (req.query.beFollow === "1") {
+      query.equalTo("followId", req.query.id);
+    } else {
+      query.equalTo("creatorId", req.query.id);
+    }
+    query.limit(parseInt(pageSize));
+    query.descending("createdAt");
+    query.skip(skip);
     let follows = await query.find({ useMasterKey: true });
-
+    let total = await query.count({ useMasterKey: true });
     let record = [];
     let len = follows.length;
     for (let i = 0; i < len; i++) {
-      console.log(follows[i].get("followId"));
       let singleUserQuery = new Parse.Query(Parse.User);
-      singleUserQuery.equalTo("objectId", follows[i].get("followId"));
+      singleUserQuery.equalTo(
+        "objectId",
+        req.query.beFollow === "1"
+          ? follows[i].get("creatorId")
+          : follows[i].get("followId")
+      );
       let singleUser = await singleUserQuery.first({
         useMasterKey: true,
       });
@@ -61,15 +74,32 @@ Router.get("/list", async (req, res) => {
 
       record.push({
         avatar: singleUser.get("avatar"),
+        motto: singleUser.get("motto") || "",
         id: singleUser.id,
-        nickName: singleUser.get("nickName"),
+        follow: true,
+        nickName: singleUser.get("nickName") || singleUser.get("username"),
       });
     }
-
-    res.customSend(record);
+    res.customSend({ record, total });
   } catch (error) {
     res.customErrorSend(error.message, error.code);
   }
 });
+
+// setTimeout(async () => {
+//   let singleUserQuery = new Parse.Query(Parse.User);
+//   const result = await singleUserQuery.find({ useMasterKey: true });
+//   let userId = "0xAsbT9BZU";
+//   for (let i = 0; i < result.length; i++) {
+//     if (result[i].id == userId) continue;
+//     const Following = Parse.Object.extend("Following");
+//     const following = new Following();
+//     following.set("creatorId", result[i].id);
+//     following.set("followId", userId);
+//     following.set("creatorId", userId);
+//     following.set("followId", result[i].id);
+//     await following.save(null, { useMasterKey: true });
+//   }
+// }, 2000);
 
 module.exports = Router;

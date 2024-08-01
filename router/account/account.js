@@ -160,7 +160,6 @@ Router.post(
 // 查询个人中心信息
 Router.get("/getUserImpact", async (req, res) => {
   const userId = req.query.id || req.user.id;
-  console.log(userId);
   try {
     const userQuery = new Parse.Query(Parse.User);
     const user = await userQuery.get(userId, {

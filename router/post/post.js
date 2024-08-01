@@ -257,13 +257,13 @@ Router.get("/myPost", async (req, res) => {
   try {
     // 计算跳过的记录数和限制返回的记录数
     const { page = 1, pageSize = 10 } = req.query;
-
+    const userId = req.query.id || req.user.id;
     // 计算需要跳过的数据量
     const skip = (page - 1) * pageSize;
     const postQuery = new Parse.Query(Post);
     postQuery.limit(parseInt(pageSize));
     postQuery.skip(skip);
-    postQuery.equalTo("creator", req.user.id);
+    postQuery.equalTo("creator", userId);
     postQuery.descending("createdAt");
     const postResult = await postQuery.find();
     const total = await postQuery.count({ useMasterKey: true });
