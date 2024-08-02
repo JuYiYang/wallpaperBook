@@ -68,14 +68,78 @@ const updateUserInfo = async () => {
   const updateUserInfoQuery = new Parse.Query("UpdateUserInfoRecord");
   updateUserInfoQuery.notEqualTo("isSync", true);
   const updates = await updateUserInfoQuery.find({ useMasterKey: true });
-  console.log(
-    updates.map((item) =>
-      dayjs(item.get("updateAt")).format("YYYY-MM-DD HH:mm:ss:SSS")
-    )
-  );
+  if (updates.length <= 0) {
+    console.log("当前时间段没有可同步任务");
+    return;
+  }
+  const deduplicatedData = updates.reduce((acc, current) => {
+    const existing = acc.find(
+      (item) => item.get("userId") === current.get("userId")
+    );
+    if (existing) {
+      const existingTime = new Date(existing.get("createdAt"));
+      const currentTime = new Date(current.get("createdAt"));
+      if (currentTime > existingTime) {
+        existing.time = current.get("createdAt");
+        existing.destroy({ useMasterKey: true });
+      }
+    } else {
+      acc.push(current);
+    }
+    return acc;
+  }, []);
+  for (let i = 0; i < deduplicatedData.length; i++) {
+    let userId = deduplicatedData[i].get("userId");
+    const userQuery = new Parse.Query(Parse.User);
+    userQuery.equalTo("objectId", userId);
+    let user = await userQuery.first({ useMasterKey: true });
+    // 帖子 一二级评论
+    const postQuery = new Parse.Query("Post");
+    postQuery.equalTo("creator", userId);
+    let postRecord = await postQuery.find({ useMasterKey: true });
+    for (let post_i = 0; post_i < postRecord.length; post_i++) {
+      let post = postRecord[post_i];
+      post.set("creatorName", user.get("nickName"));
+      post.set("creatorAvatar", user.get("avatar"));
+      post
+        .save(null, { useMasterKey: true })
+        // .then(() => console.log("Post -- 同步用户信息 -- success"))
+        .catch((err) => console.log("Post -- 同步用户信息 -- error", err));
+    }
+    const PostComment = Parse.Object.extend("PostComment");
+    const commentQuery = new Parse.Query(PostComment);
+    commentQuery.equalTo("creatorId", userId);
+    let commentRecord = await commentQuery.find({ useMasterKey: true });
+    for (let comment_i = 0; comment_i < commentRecord.length; comment_i++) {
+      let element = commentRecord[comment_i];
+      element.set("username", user.get("nickName"));
+      element.set("avatar", user.get("avatar"));
+      element
+        .save(null, { useMasterKey: true })
+        // .then(() => console.log("PostComment -- 同步用户信息 -- success"))
+        .catch((err) =>
+          console.log("PostComment -- 同步用户信息 -- error", err)
+        );
+    }
+    const replyCommentQuery = new Parse.Query("PostReplyComment");
+    replyCommentQuery.equalTo("creatorId", userId);
+    let replyRecord = await replyCommentQuery.find({ useMasterKey: true });
+    for (let reply_i = 0; reply_i < replyRecord.length; reply_i++) {
+      let element = replyRecord[reply_i];
+      element.set("username", user.get("nickName"));
+      element.set("avatar", user.get("avatar"));
+      element
+        .save(null, { useMasterKey: true })
+        // .then(() => console.log("PostReplyComment -- 同步用户信息 -- success"))
+        .catch((err) =>
+          console.log("PostReplyComment -- 同步用户信息 -- error", err)
+        );
+    }
+    deduplicatedData[i].set("isSync", true);
+    deduplicatedData[i].save(null, { useMaterKey: true });
+  }
 };
-
-cron.schedule("0 30 * * * *", updateWeight);
-
+cron.schedule("0 15 * * * *", updateWeight);
+// cron.schedule("0 0 2 * * *", updateUserInfo);
 setTimeout(updateUserInfo, 1200);
 // setTimeout(updateWeight, 120);
