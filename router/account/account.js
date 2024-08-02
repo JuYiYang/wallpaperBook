@@ -48,7 +48,6 @@ Router.put("/info", async (req, res) => {
       "motto",
       "preference",
     ];
-    console.log(req.body);
     const currentUser = Parse.User.current();
     for (const key in req.body) {
       let val = req.body[key];
@@ -58,6 +57,7 @@ Router.put("/info", async (req, res) => {
         }
       }
     }
+
     const UserMilestone = Parse.Object.extend("UserMilestone");
     const query = new Parse.Query(UserMilestone);
     query.equalTo("creatorId", req.user.id);
@@ -75,6 +75,10 @@ Router.put("/info", async (req, res) => {
       });
 
     await currentUser.save(null, { useMasterKey: true });
+    const UpdateUserInfoRecord = Parse.Object.extend("UpdateUserInfoRecord");
+    const updateUserInfoRecord = new UpdateUserInfoRecord();
+    updateUserInfoRecord.set("userId", req.user.id);
+    updateUserInfoRecord.save(null, { useMasterKey: true });
     res.customSend("success");
   } catch (error) {
     res.customErrorSend(error.message, error.code);
@@ -105,6 +109,10 @@ Router.put(
       const currentUser = Parse.User.current();
       currentUser.set("avatar", fileUrl);
       await currentUser.save(null, { useMasterKey: true });
+      const UpdateUserInfoRecord = Parse.Object.extend("UpdateUserInfoRecord");
+      const updateUserInfoRecord = new UpdateUserInfoRecord();
+      updateUserInfoRecord.set("userId", req.user.id);
+      updateUserInfoRecord.save(null, { useMasterKey: true });
       res.customSend("success");
     } catch (error) {
       res.customErrorSend(error.message, error.code);

@@ -57,6 +57,8 @@ Router.get("/getMyLikePost", async (req, res) => {
     // 计算跳过的记录数和限制返回的记录数
     const { page = 1, pageSize = 10 } = req.query;
     const userId = req.query.id || req.user.id;
+    console.log("like", userId);
+
     // 计算需要跳过的数据量
     const skip = (page - 1) * pageSize;
     const postLike = Parse.Object.extend("PostLike");

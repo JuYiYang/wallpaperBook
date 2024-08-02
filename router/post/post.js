@@ -194,7 +194,6 @@ Router.get("/getAllPost", async (req, res) => {
     total,
   });
 });
-
 // 查询帖子详情
 Router.get(
   "/getSinglePostInfo",

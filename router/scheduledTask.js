@@ -1,5 +1,5 @@
 const cron = require("node-cron");
-
+const dayjs = require("dayjs");
 const updateWeight = async () => {
   console.log("开始更新帖子权重");
 
@@ -63,6 +63,19 @@ function calculateWeight(likeCount, commentCount, viewCount, isRecommended) {
     ).toFixed(4)
   );
 }
+
+const updateUserInfo = async () => {
+  const updateUserInfoQuery = new Parse.Query("UpdateUserInfoRecord");
+  updateUserInfoQuery.notEqualTo("isSync", true);
+  const updates = await updateUserInfoQuery.find({ useMasterKey: true });
+  console.log(
+    updates.map((item) =>
+      dayjs(item.get("updateAt")).format("YYYY-MM-DD HH:mm:ss:SSS")
+    )
+  );
+};
+
 cron.schedule("0 30 * * * *", updateWeight);
 
+setTimeout(updateUserInfo, 1200);
 // setTimeout(updateWeight, 120);

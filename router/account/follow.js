@@ -71,12 +71,20 @@ Router.get("/list", async (req, res) => {
         useMasterKey: true,
       });
       if (!singleUser) continue;
-
+      const isFollowQuery = new Parse.Query("Following");
+      isFollowQuery.equalTo("creatorId", req.user.id);
+      isFollowQuery.equalTo(
+        "followId",
+        req.query.beFollow === "1"
+          ? follows[i].get("creatorId")
+          : follows[i].get("followId")
+      );
+      let isFollow = await isFollowQuery.first({ useMasterKey: true });
       record.push({
         avatar: singleUser.get("avatar"),
         motto: singleUser.get("motto") || "",
         id: singleUser.id,
-        follow: true,
+        follow: !!isFollow,
         nickName: singleUser.get("nickName") || singleUser.get("username"),
       });
     }
