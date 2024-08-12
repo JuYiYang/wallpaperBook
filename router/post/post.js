@@ -5,7 +5,6 @@ const path = require("path");
 const Joi = require("joi");
 const { multiple } = require("../../utils//saveFile");
 const { validateParams } = require("../../utils/middlewares");
-
 const Router = express.Router();
 const Post = Parse.Object.extend("Post");
 const PostWall = Parse.Object.extend("PostWall");
@@ -117,12 +116,16 @@ Router.get("/getAllPost", async (req, res) => {
   // 计算跳过的记录数和限制返回的记录数
   const { page = 1, pageSize = 10 } = req.query;
 
+  const isLogin = !!req.user;
+
   // 计算需要跳过的数据量
   const skip = (page - 1) * pageSize;
 
   const postQuery = new Parse.Query(Post);
 
-  postQuery.skip(skip);
+  postQuery.skip(isLogin ? skip : skip > 20 ? 20 : skip);
+  // postQuery.equalTo("creator", "5ZymABw2Z6");
+  postQuery.notEqualTo("creator", "5ZymABw2Z6");
   postQuery.limit(parseInt(pageSize));
   postQuery.descending("createdAt");
   if (req.query.userId) {
@@ -148,10 +151,10 @@ Router.get("/getAllPost", async (req, res) => {
     // 当前用户是否点赞
     const postLike = Parse.Object.extend("PostLike");
     const postLikeQuery = new Parse.Query(postLike);
-    postLikeQuery.equalTo("creatorId", req.user.id);
+    postLikeQuery.equalTo("creatorId", req.user?.id);
     postLikeQuery.equalTo("postId", singlePost.id);
     const followingQuery = new Parse.Query("Following");
-    followingQuery.equalTo("creatorId", req.user.id);
+    followingQuery.equalTo("creatorId", req.user?.id);
     followingQuery.equalTo("followId", singlePost.get("creator"));
     let follow = await followingQuery.first({ useMasterKey: true });
     let content = await contentQuery.first({ useMasterKey: true });
@@ -188,6 +191,7 @@ Router.get("/getAllPost", async (req, res) => {
   const total = await postQuery.count({ useMasterKey: true });
   res.customSend({
     nextPage: page * pageSize < total,
+    isLogin,
     records: postRecords
       .sort((a, b) => b.weight - a.weight)
       .map(({ weight, ...rest }) => rest),

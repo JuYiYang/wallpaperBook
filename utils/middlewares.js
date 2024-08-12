@@ -20,12 +20,11 @@ exports.crossDomainMiddlewar = (req, res, next) => {
   res.header("Access-Control-Allow-Headers", "Content-Type");
   next();
 };
-
+let notAuthPath = ["/getAllPost", "/browse"];
 // 身份验证中间件
-
 exports.authenticateMiddleware = (req, res, next) => {
   const sessionToken = req.headers.authorization;
-  if (!sessionToken) {
+  if (!sessionToken && !notAuthPath.includes(req.path)) {
     return res.customErrorSend("Invalid session token", 401);
   }
 
@@ -37,6 +36,10 @@ exports.authenticateMiddleware = (req, res, next) => {
       next();
     })
     .catch((error) => {
+      if (notAuthPath.includes(req.path)) {
+        next();
+        return;
+      }
       // 身份验证失败
       return res.customErrorSend("Invalid identity information", 401);
     });

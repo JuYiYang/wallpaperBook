@@ -57,7 +57,6 @@ Router.get("/getMyLikePost", async (req, res) => {
     // 计算跳过的记录数和限制返回的记录数
     const { page = 1, pageSize = 10 } = req.query;
     const userId = req.query.id || req.user.id;
-    console.log("like", userId);
 
     // 计算需要跳过的数据量
     const skip = (page - 1) * pageSize;
@@ -92,7 +91,10 @@ Router.get("/getMyLikePost", async (req, res) => {
       }
       // 图
       const wallQuery = new Parse.Query("PostWall");
-      wallQuery.containedIn("objectId", item.get("wallId").split(","));
+      wallQuery.containedIn(
+        "objectId",
+        (!!item.get("wallId") ? item.get("wallId") : "").split(",")
+      );
       // 文
       const contentQuery = new Parse.Query("PostContent");
       contentQuery.equalTo("objectId", item.get("contentId"));
@@ -109,6 +111,7 @@ Router.get("/getMyLikePost", async (req, res) => {
               id: postInfo.get("creator"),
             }
           : null,
+        maxPostHeight: postInfo.get("maxPostHeight"),
         createdAt: item.get("createdAt"),
         postId: item.get("postId"),
         content: content?.get("content") || "",
@@ -121,6 +124,7 @@ Router.get("/getMyLikePost", async (req, res) => {
         }),
       });
     }
+
     res.customSend({
       records,
       total,

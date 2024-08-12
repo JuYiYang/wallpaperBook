@@ -3,6 +3,8 @@ const Parse = require("parse/node");
 const Router = express.Router();
 
 Router.put("/", async (req, res) => {
+  console.log(req.body.id, req.user.id);
+
   if (!req.body.id || req.body.id === req.user.id) {
     return res.customErrorSend("Error");
   }

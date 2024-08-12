@@ -168,8 +168,9 @@ const startKeywordRequests = async (current, sendEvent) => {
   }
 };
 Router.get("/downloadDuiTang", async (req, res) => {
+  const uploadDir = path.join("D:", "wallNetwork");
   let isClose = false;
-  let current = 0;
+  let current = 82221;
   res.setHeader("Content-Type", "text/event-stream");
   res.setHeader("Cache-Control", "no-cache");
   res.setHeader("Connection", "keep-alive");
@@ -187,11 +188,11 @@ Router.get("/downloadDuiTang", async (req, res) => {
   const dtQuery = new Parse.Query(DuiTangData);
   const total = await dtQuery.count();
   fs.ensureDirSync(uploadDir);
-  dtQuery.limit(1);
+  dtQuery.limit(total);
   dtQuery.skip(1);
 
   const records = await dtQuery.find();
-  sendEvent({ length: records.length, total, records });
+  sendEvent({ length: records.length, total });
 
   for (current; current < records.length; current++) {
     if (isClose) break;
@@ -202,7 +203,16 @@ Router.get("/downloadDuiTang", async (req, res) => {
     if (fileExtension.indexOf("_") > 0) {
       fileExtension = fileExtension.split("_")[0];
     }
-    const response = await axios.get(imageUrl, { responseType: "arraybuffer" });
+    const response = await axios
+      .get(imageUrl, { responseType: "arraybuffer" })
+      .catch((err) => {
+        console.log(current, "err", item.toJSON());
+      });
+    if (!response || !response?.data) {
+      console.log("jump", current);
+
+      continue;
+    }
     const fileBuffer = Buffer.from(response.data, "binary");
 
     // 计算 MD5 值
@@ -226,14 +236,10 @@ Router.get("/downloadDuiTang", async (req, res) => {
     wall.set("source", "DuiTangData");
     wall.set("sourceId", item.id);
     wall.set("sourcePath", imageUrl);
-    const afterInfo = await wall.save(null, { useMasterKey: true });
+    await wall.save(null, { useMasterKey: true });
     await delay(700);
     sendEvent({
-      imageUrl,
-      afterInfo,
-      fileExtension,
-      id: item.id,
-      msg: "保存成功！",
+      current,
     });
   }
   res.end();

@@ -201,7 +201,7 @@ Router.get("/getUserImpact", async (req, res) => {
     }
     res.customSend({
       avatar: user.get("avatar"),
-      motto: user.get("motto"),
+      motto: user.get("motto") || "",
       id: user.id,
       username: user.get("nickName"),
       follows,

@@ -59,7 +59,7 @@ Router.use("/follow", authenticateMiddleware, Follow);
 
 Router.use("*", (req, res) => {
   // res.status(404).sendFile(path.join(__dirname, "public", "404.html"));
-  res.status(404).send("/warning");
+  res.status(404).send(req.baseUrl);
 });
 
 module.exports = Router;

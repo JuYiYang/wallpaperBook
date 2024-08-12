@@ -14,6 +14,9 @@ Router.put(
     })
   ),
   async (req, res) => {
+    if (!req?.user) {
+      return res.customSend();
+    }
     try {
       let paramsIds = req.body.ids.split(",");
 
