@@ -11,30 +11,37 @@ const Router = express.Router();
 
 // 查询用户信息
 Router.get("/info", async (req, res) => {
-  const {
-    sessionToken,
-    className,
-    __type,
-    ACL,
-    createdAt,
-    updatedAt,
-    ...userInfo
-  } = req.user.toJSON();
+  try {
+    const {
+      sessionToken,
+      className,
+      __type,
+      ACL,
+      createdAt,
+      updatedAt,
+      ...userInfo
+    } = req.user.toJSON();
 
-  const UserMilestone = Parse.Object.extend("UserMilestone");
-  const query = new Parse.Query(UserMilestone);
-  query.equalTo("creatorId", userInfo.objectId);
-  let milestone = await query.first({ useMasterKey: true });
-  const milestoneInfo = milestone.toJSON();
-  delete milestoneInfo.createdAt;
-  delete milestoneInfo.updatedAt;
-  delete milestoneInfo.objectId;
-  delete milestoneInfo.creatorId;
-  res.customSend({
-    ...userInfo,
-    ...milestoneInfo,
-    last_login_at: req.user.get("last_login_at"),
-  });
+    const UserMilestone = Parse.Object.extend("UserMilestone");
+    const query = new Parse.Query(UserMilestone);
+    query.equalTo("creatorId", userInfo.objectId);
+    let milestone = await query.first({ useMasterKey: true });
+    console.log(milestone);
+    console.log(req.query);
+
+    const milestoneInfo = milestone.toJSON();
+    delete milestoneInfo.createdAt;
+    delete milestoneInfo.updatedAt;
+    delete milestoneInfo.objectId;
+    delete milestoneInfo.creatorId;
+    res.customSend({
+      ...userInfo,
+      ...milestoneInfo,
+      last_login_at: req.user.get("last_login_at"),
+    });
+  } catch (error) {
+    res.customErrorSend(error.message, error.code);
+  }
 });
 
 // 修改用户信息
