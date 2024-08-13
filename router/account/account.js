@@ -21,6 +21,7 @@ Router.get("/info", async (req, res) => {
       updatedAt,
       ...userInfo
     } = req.user.toJSON();
+    console.log(req.user);
 
     const UserMilestone = Parse.Object.extend("UserMilestone");
     const query = new Parse.Query(UserMilestone);
