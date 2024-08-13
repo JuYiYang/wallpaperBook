@@ -133,7 +133,7 @@ Router.get("/getAllPost", async (req, res) => {
   } else {
     postQuery.descending("weight");
   }
-  const postResult = await postQuery.find(); // 按创建时间降序排序
+  const postResult = await postQuery.find({ useMasterKey: true }); // 按创建时间降序排序
 
   let postRecords = [];
   for (let i = 0; i < postResult.length; i++) {
