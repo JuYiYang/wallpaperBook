@@ -109,6 +109,7 @@ Router.post("/googleSignIn", async (req, res) => {
     );
     userRecord.set("last_login_at", new Date());
     userRecord.save(null, { useMasterKey: true });
+    createdUserMilestone(userLogin.id);
     res.customSend({ token: userLogin.getSessionToken() });
   } catch (error) {
     console.error("Google login failure", error);
@@ -233,6 +234,13 @@ const invalidateUserSessions = async (user) => {
 // 创建里程碑表
 const createdUserMilestone = async (userId) => {
   const UserMilestone = Parse.Object.extend("UserMilestone");
+  const query = new Parse.Query(UserMilestone);
+  query.equalTo("creatorId", userId);
+  const record = await query.find({ useMasterKey: true });
+  if (record.length) {
+    console.log(userId, "重复创建里程碑");
+    return;
+  }
   const userMilestone = new UserMilestone();
   userMilestone.set("creatorId", userId);
   userMilestone.set("firstSetting", false);

@@ -21,15 +21,10 @@ Router.get("/info", async (req, res) => {
       updatedAt,
       ...userInfo
     } = req.user.toJSON();
-    console.log(req.user);
-
     const UserMilestone = Parse.Object.extend("UserMilestone");
     const query = new Parse.Query(UserMilestone);
     query.equalTo("creatorId", userInfo.objectId);
-    let milestone = await query.first({ useMasterKey: true });
-    console.log(milestone);
-    console.log(req.query);
-
+    let milestone = (await query.first({ useMasterKey: true })) || {};
     const milestoneInfo = milestone.toJSON();
     delete milestoneInfo.createdAt;
     delete milestoneInfo.updatedAt;
