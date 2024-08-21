@@ -86,7 +86,7 @@ Router.post("/googleSignIn", async (req, res) => {
       return res.customErrorSend("Faild information has expired");
     }
     const userQuery = new Parse.Query(Parse.User);
-    userQuery.equalTo("googleId", payload.sub);
+    userQuery.equalTo("otherId", payload.sub);
     let userRecord = await userQuery.first({ useMasterKey: true });
     if (!userRecord) {
       let password = crypto.randomBytes(5).toString("hex");
@@ -99,7 +99,7 @@ Router.post("/googleSignIn", async (req, res) => {
       user.set("downloadFrequency", 0);
       user.set("avatar", payload.picture);
       user.set("nickName", payload.name);
-      user.set("googleId", payload.sub);
+      user.set("otherId", payload.sub);
       user.set("source", "google");
       userRecord = await user.signUp(null, { useMasterKey: true });
     }
