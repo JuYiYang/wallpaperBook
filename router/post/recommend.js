@@ -27,7 +27,9 @@ Router.put(
         const query = new Parse.Query(PostBrowseHistory);
         query.equalTo("creatorId", req.user.id);
         query.equalTo("postId", item);
+        query.descending("createdAt");
         const singleBrowseHistory = await query.first({ useMasterKey: true });
+
         // 如果没有则直接添加
         if (!singleBrowseHistory) {
           satisfactory.push(item);
