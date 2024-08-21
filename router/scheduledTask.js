@@ -90,6 +90,7 @@ const updateUserInfo = async () => {
   }, []);
   for (let i = 0; i < deduplicatedData.length; i++) {
     let userId = deduplicatedData[i].get("userId");
+
     const userQuery = new Parse.Query(Parse.User);
     userQuery.equalTo("objectId", userId);
     let user = await userQuery.first({ useMasterKey: true });
