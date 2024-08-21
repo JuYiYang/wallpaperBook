@@ -19,8 +19,7 @@ Router.post("/creatdPost", multiple, async (req, res) => {
     return res.customErrorSend("缺少必要参数！");
   }
   try {
-    await createPost(req.files, req.user, req.body);
-    res.customSend("success");
+    res.customSend(await createPost(req.files, req.user, req.body));
   } catch (err) {
     console.log(err);
     res.customErrorSend(err);
@@ -83,7 +82,8 @@ const createPost = async (images, user, body) => {
   post.set("creatorAvatar", user.get("avatar"));
   post.set("creatorName", user.get("nickName"));
 
-  return await post.save(null, { useMasterKey: true });
+  let singlePost = await post.save(null, { useMasterKey: true });
+  return singlePost.id;
 };
 
 // 删除帖子
@@ -124,14 +124,22 @@ Router.get("/getAllPost", async (req, res) => {
   const postQuery = new Parse.Query(Post);
 
   postQuery.skip(isLogin ? skip : skip > 20 ? 20 : skip);
-  // postQuery.equalTo("creator", "5ZymABw2Z6");
-  postQuery.notEqualTo("creator", "5ZymABw2Z6");
   postQuery.limit(parseInt(pageSize));
-  postQuery.descending("createdAt");
+  postQuery.descending("createdAt"); // 对于同一 weight 按 createdAt 排序
   if (req.query.userId) {
     postQuery.equalTo("creator", req.query.userId);
   } else {
+    postQuery.ascending("weight"); // 确保排序唯一
     postQuery.descending("weight");
+    const pageView = Parse.Object.extend("PostBrowseHistory");
+    const pageViewQuery = new Parse.Query(pageView);
+    pageViewQuery.equalTo("creatorId", req.user.id);
+    let pageViewRecord = await pageViewQuery.findAll({ useMasterKey: true });
+
+    postQuery.notContainedIn(
+      "objectId",
+      pageViewRecord.map((item) => item.get("postId"))
+    );
   }
   const postResult = await postQuery.find({ useMasterKey: true }); // 按创建时间降序排序
 
@@ -172,7 +180,8 @@ Router.get("/getAllPost", async (req, res) => {
     postRecords.push({
       id: singlePost.id,
       follow: !!follow,
-      createdAt: singlePost.get("createdAt"),
+      createdAt:
+        singlePost.get("customCreatedAt") || singlePost.get("createdAt"),
       like: singlePost.get("likeCount") || 0,
       maxPostHeight: singlePost.get("maxPostHeight"),
       content: content?.get("content"),
@@ -240,7 +249,8 @@ Router.get(
         commentCount: singlePost.get("commentCount") || 0,
         content: content?.get("content"),
         likeCount: singlePost.get("likeCount") || 0,
-        createdAt: singlePost.get("createdAt"),
+        createdAt:
+          singlePost.get("customCreatedAt") || singlePost.get("createdAt"),
         walls: walls.map((item) => {
           return {
             id: item.id,
@@ -283,11 +293,12 @@ Router.get("/myPost", async (req, res) => {
       contentQuery.equalTo("objectId", item.get("contentId"));
       let content = await contentQuery.first({ useMasterKey: true });
       let walls = await wallQuery.find({ useMasterKey: true });
+
       records.push({
         id: item.id,
         likeCount: item.get("likeCount"),
         commentCount: item.get("commentCount"),
-        createdAt: item.get("createdAt"),
+        createdAt: item.get("customCreatedAt") || item.get("createdAt"),
         postId: item.get("postId"),
         content: content.get("content"),
         walls: walls.map((wall) => {
