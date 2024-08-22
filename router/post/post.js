@@ -10,6 +10,10 @@ const Post = Parse.Object.extend("Post");
 const PostWall = Parse.Object.extend("PostWall");
 const PostContentInfo = Parse.Object.extend("PostContent");
 
+const {
+  getPostAdditionalValue,
+  withPostfindDetail,
+} = require("../../utils/utils");
 // 创建帖子
 Router.post("/creatdPost", multiple, async (req, res) => {
   if (
@@ -19,7 +23,9 @@ Router.post("/creatdPost", multiple, async (req, res) => {
     return res.customErrorSend("缺少必要参数！");
   }
   try {
-    res.customSend(await createPost(req.files, req.user, req.body));
+    let postId = await createPost(req.files, req.user, req.body);
+
+    res.customSend(postId);
   } catch (err) {
     console.log(err);
     res.customErrorSend(err);
@@ -82,7 +88,28 @@ const createPost = async (images, user, body) => {
   post.set("creatorAvatar", user.get("avatar"));
   post.set("creatorName", user.get("nickName"));
 
+  post.set("weight", getPostAdditionalValue(images.length, text?.length || 0)); // 初始权重
+
   let singlePost = await post.save(null, { useMasterKey: true });
+
+  const wallQuery = new Parse.Query("PostWall");
+  const contentQuery = new Parse.Query("PostContent");
+  if (singlePost.get("wallId")) {
+    let afterWall = await wallQuery.get(singlePost.get("wallId"));
+    afterWall.set("belongId", singlePost.id);
+    afterWall.save(null, { useMasterKey: true }).catch((err) => {
+      console.log("set wall belongId", err);
+    });
+  }
+  if (singlePost.get("contentId")) {
+    let afterContent = await contentQuery.get(singlePost.get("contentId"));
+    afterContent.set("belongId", singlePost.id);
+    afterContent.save(null, { useMasterKey: true }).catch((err) => {
+      console.log("set content belongId", err);
+    });
+  }
+  console.log(singlePost.id);
+
   return singlePost.id;
 };
 
@@ -112,101 +139,61 @@ Router.delete(
 );
 
 // 查询帖子
-Router.get("/getAllPost", async (req, res) => {
-  // 计算跳过的记录数和限制返回的记录数
-  const { page = 1, pageSize = 10 } = req.query;
+Router.get(
+  "/getAllPost",
+  validateParams(
+    Joi.object({
+      pageSize: Joi.number().max(20),
+      page: Joi.number(),
+    }).unknown()
+  ),
+  async (req, res) => {
+    // 计算跳过的记录数和限制返回的记录数
+    const { page = 1, pageSize = 10 } = req.query;
 
-  const isLogin = !!req.user;
+    const isLogin = !!req.user;
 
-  // 计算需要跳过的数据量
-  const skip = (page - 1) * pageSize;
+    // 计算需要跳过的数据量
+    const skip = (page - 1) * pageSize;
 
-  const postQuery = new Parse.Query(Post);
+    const postQuery = new Parse.Query(Post);
 
-  postQuery.skip(isLogin ? skip : skip > 20 ? 20 : skip);
-  postQuery.limit(parseInt(pageSize));
-  postQuery.descending("createdAt"); // 对于同一 weight 按 createdAt 排序
-  if (req.query.userId) {
-    postQuery.equalTo("creator", req.query.userId);
-  } else {
-    postQuery.ascending("weight"); // 确保排序唯一
-    postQuery.descending("weight");
-    const pageView = Parse.Object.extend("PostBrowseHistory");
-    const pageViewQuery = new Parse.Query(pageView);
-    pageViewQuery.equalTo("creatorId", req.user.id);
-    let pageViewRecord = await pageViewQuery.findAll({ useMasterKey: true });
+    postQuery.skip(isLogin ? skip : skip > 20 ? 20 : skip);
+    postQuery.limit(parseInt(pageSize));
+    postQuery.descending("createdAt");
+    if (req.query.userId) {
+      postQuery.equalTo("creator", req.query.userId);
+    } else {
+      postQuery.descending("weight"); // 确保排序唯一
+      const pageView = Parse.Object.extend("PostBrowseHistory");
+      const pageViewQuery = new Parse.Query(pageView);
+      pageViewQuery.equalTo("creatorId", req.user?.id);
+      let pageViewRecord = await pageViewQuery.findAll({ useMasterKey: true });
 
-    postQuery.notContainedIn(
-      "objectId",
-      pageViewRecord.map((item) => item.get("postId"))
-    );
-  }
-  const postResult = await postQuery.find({ useMasterKey: true }); // 按创建时间降序排序
-
-  let postRecords = [];
-  for (let i = 0; i < postResult.length; i++) {
-    let singlePost = postResult[i];
-    let wallId = singlePost.get("wallId") || "";
-    // 被点赞内容的 ID
-    let contentId = singlePost.get("contentId");
-    // 图
-    const wallQuery = new Parse.Query(PostWall);
-    wallQuery.containedIn("objectId", wallId.split(","));
-    // 文
-    const contentQuery = new Parse.Query(PostContentInfo);
-    contentQuery.equalTo("objectId", contentId);
-
-    // 当前用户是否点赞
-    const postLike = Parse.Object.extend("PostLike");
-    const postLikeQuery = new Parse.Query(postLike);
-    postLikeQuery.equalTo("creatorId", req.user?.id);
-    postLikeQuery.equalTo("postId", singlePost.id);
-    const followingQuery = new Parse.Query("Following");
-    followingQuery.equalTo("creatorId", req.user?.id);
-    followingQuery.equalTo("followId", singlePost.get("creator"));
-    let follow = await followingQuery.first({ useMasterKey: true });
-    let content = await contentQuery.first({ useMasterKey: true });
-    let walls = await wallQuery.find({ useMasterKey: true });
-    let likes = await postLikeQuery.find({ useMasterKey: true });
-    let userWalls = [];
-    for (let j = 0; j < walls.length; j++) {
-      userWalls.push({
-        id: walls[j].id,
-        createdAt: walls[j].get("createdAt"),
-        url: walls[j].get("imageUrl"),
-      });
+      postQuery.notContainedIn(
+        "objectId",
+        pageViewRecord.map((item) => item.get("postId"))
+      );
     }
+    const postResult = await postQuery.find({ useMasterKey: true }); // 按创建时间降序排序
 
-    postRecords.push({
-      id: singlePost.id,
-      follow: !!follow,
-      createdAt:
-        singlePost.get("customCreatedAt") || singlePost.get("createdAt"),
-      like: singlePost.get("likeCount") || 0,
-      maxPostHeight: singlePost.get("maxPostHeight"),
-      content: content?.get("content"),
-      walls: userWalls,
-      isLike: !!likes.length,
-      weight: singlePost.get("weight"),
-      userInfo: {
-        avatar: singlePost.get("creatorAvatar"),
-        username: singlePost.get("creatorName"),
-        id: singlePost.get("creator"),
-      },
-      collet: Math.floor(Math.random() * 50 + 1),
-      comment: singlePost.get("commentCount") || 0,
+    let postRecords = [];
+    let postsLength = postResult.length;
+    for (let i = 0; i < postsLength; i++) {
+      postRecords.push(await withPostfindDetail(postResult[i], req.user?.id));
+    }
+    const total = await postQuery.count({ useMasterKey: true });
+    res.customSend({
+      nextPage: page * pageSize < total,
+      isLogin,
+      records: postRecords
+        .sort((a, b) => b.weight - a.weight)
+        .map(({ weight, ...rest }) => rest),
+      total,
     });
   }
-  const total = await postQuery.count({ useMasterKey: true });
-  res.customSend({
-    nextPage: page * pageSize < total,
-    isLogin,
-    records: postRecords
-      .sort((a, b) => b.weight - a.weight)
-      .map(({ weight, ...rest }) => rest),
-    total,
-  });
-});
+);
+
 // 查询帖子详情
 Router.get(
   "/getSinglePostInfo",
@@ -220,45 +207,7 @@ Router.get(
       const postQuery = new Parse.Query(Post);
       const singlePost = await postQuery.get(req.query.id);
 
-      let wallId = singlePost.get("wallId") || "";
-      // 被点赞内容的 ID
-      let contentId = singlePost.get("contentId");
-
-      const wallQuery = new Parse.Query(PostWall);
-      wallQuery.containedIn("objectId", wallId.split(","));
-
-      const contentQuery = new Parse.Query(PostContentInfo);
-      contentQuery.equalTo("objectId", contentId);
-      let content = await contentQuery.first({ useMasterKey: true });
-      let walls = await wallQuery.find({ useMasterKey: true });
-
-      const followingQuery = new Parse.Query("Following");
-      followingQuery.equalTo("creatorId", req.user.id);
-      followingQuery.equalTo("followId", singlePost.get("creator"));
-      let follow = await followingQuery.first({ useMasterKey: true });
-
-      res.customSend({
-        id: singlePost.id,
-        follow: !!follow,
-        userInfo: {
-          avatar: singlePost.get("creatorAvatar"),
-          username: singlePost.get("creatorName"),
-          id: singlePost.get("creator"),
-        },
-        colletCount: Math.floor(Math.random() * 50 + 1),
-        commentCount: singlePost.get("commentCount") || 0,
-        content: content?.get("content"),
-        likeCount: singlePost.get("likeCount") || 0,
-        createdAt:
-          singlePost.get("customCreatedAt") || singlePost.get("createdAt"),
-        walls: walls.map((item) => {
-          return {
-            id: item.id,
-            createdAt: item.get("createdAt"),
-            url: item.get("imageUrl"),
-          };
-        }),
-      });
+      res.customSend(await withPostfindDetail(singlePost, req.user.id));
     } catch (error) {
       res.customErrorSend(error);
     }
@@ -282,37 +231,53 @@ Router.get("/myPost", async (req, res) => {
     const total = await postQuery.count({ useMasterKey: true });
     let records = [];
     for (let i = 0; i < postResult.length; i++) {
-      let item = postResult[i];
-      const PostWall = Parse.Object.extend("PostWall");
-      const PostContentInfo = Parse.Object.extend("PostContent");
-      // 图
-      const wallQuery = new Parse.Query(PostWall);
-      wallQuery.containedIn("objectId", item.get("wallId").split(","));
-      // 文
-      const contentQuery = new Parse.Query(PostContentInfo);
-      contentQuery.equalTo("objectId", item.get("contentId"));
-      let content = await contentQuery.first({ useMasterKey: true });
-      let walls = await wallQuery.find({ useMasterKey: true });
-
-      records.push({
-        id: item.id,
-        likeCount: item.get("likeCount"),
-        commentCount: item.get("commentCount"),
-        createdAt: item.get("customCreatedAt") || item.get("createdAt"),
-        postId: item.get("postId"),
-        content: content.get("content"),
-        walls: walls.map((wall) => {
-          return {
-            id: wall.id,
-            createdAt: wall.get("createdAt"),
-            url: wall.get("imageUrl"),
-          };
-        }),
-      });
+      records.push(await withPostfindDetail(postResult[i], req.user.id));
     }
     res.customSend({ records, nextPage: page * pageSize < total });
   } catch (error) {
     res.customErrorSend(error.message, error.code);
   }
 });
+Router.get(
+  "/keyWord",
+  validateParams(
+    Joi.object({
+      keyWord: Joi.string().required(),
+      pageSize: Joi.number().max(20),
+      page: Joi.number(),
+    }).unknown()
+  ),
+  async (req, res) => {
+    try {
+      // 计算跳过的记录数和限制返回的记录数
+      const { page = 1, pageSize = 10 } = req.query;
+      // 计算需要跳过的数据量
+      const skip = (page - 1) * pageSize;
+      let keyWord = req.query.keyWord;
+
+      const characters = keyWord.split("");
+
+      characters.push(keyWord);
+
+      const regexPattern = characters.join("|");
+      const postContentQuery = new Parse.Query("PostContent");
+      postContentQuery.skip(skip);
+      postContentQuery.limit(parseInt(pageSize));
+      postContentQuery.matches("content", regexPattern);
+      const total = await postContentQuery.count({ useMasterKey: true });
+      const record = await postContentQuery.find({ useMasterKey: true });
+      let recordLength = record.length;
+      let result = [];
+      for (let i = 0; i < recordLength; i++) {
+        const postQuery = new Parse.Query(Post);
+        const singlePost = await postQuery.get(record[i].get("belongId"));
+        result.push(await withPostfindDetail(singlePost, req.user.id));
+      }
+
+      res.customSend({ total: result.length, result });
+    } catch (error) {
+      res.customErrorSend(error.message, error.code);
+    }
+  }
+);
 module.exports = Router;

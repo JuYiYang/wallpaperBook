@@ -273,12 +273,12 @@ const delay = (ms = 3000) => {
 };
 Router.post("/redBook", async (req, res) => {
   const RedBookPost = Parse.Object.extend("redBookPost");
-  if (!req.body?.data?.items) {
+  if (!req.body?.data?.items && !req.body?.data?.notes) {
     console.log("数据缺失", req.body);
-
-    return res.customSend();
+    res.customSend();
+    return;
   }
-  const record = req.body.data.items;
+  const record = req.body.data.items || req.body.data.notes;
   console.log(req.body.data.cursor_score || record.length);
 
   for (let i = 0; i < record.length; i++) {
@@ -287,8 +287,7 @@ Router.post("/redBook", async (req, res) => {
     dtQuery.equalTo("source_id", item["id"]);
     let history = await dtQuery.find({ useMasterKey: true });
     if (history.length) {
-      console.log("jump 重复");
-      ({ m: "跳过" });
+      console.log("jump 重复", history[0].id);
       continue;
     }
     let redBookPost = new RedBookPost();
@@ -299,7 +298,8 @@ Router.post("/redBook", async (req, res) => {
       }
       redBookPost.set(key, item[key]);
     }
-    await redBookPost.save(null, { useMasterKey: true });
+    let afterInfo = await redBookPost.save(null, { useMasterKey: true });
+    console.log("保存", afterInfo.id);
   }
   res.customSend();
 });
@@ -361,7 +361,7 @@ async function generateAccount() {
   const RedBookPost = Parse.Object.extend("redBookPost");
 
   const dtQuery = new Parse.Query(RedBookPost);
-
+  dtQuery.doesNotExist("postId");
   const total = await dtQuery.count({ useMasterKey: true });
   console.log("总计数据", total);
   dtQuery.limit(total);
@@ -371,21 +371,23 @@ async function generateAccount() {
 
   for (let i = 0; i < record.length; i++) {
     let item = record[i];
-    if (!item.get("note_card")) {
+    if (!item.get("note_card") && !item.get("cover")) {
       console.log("数据缺失,原source_id", item.get("source_id"));
       item
         .destroy()
         .then((res) => console.log("删除成功", item.get("source_id")));
       continue;
     }
+
+    let user = item.get("note_card")?.user || item.get("user");
     const userSql = new Parse.Query(User);
-    userSql.equalTo("otherId", item.get("note_card").user.user_id);
+    userSql.equalTo("otherId", user.user_id);
     const results = await userSql.find({ useMasterKey: true });
     if (results.length) {
-      console.log(
-        "第" + i + "条数据id重复",
-        results.map((item) => item.id)
-      );
+      // console.log(
+      //   "第" + i + "条数据id重复",
+      //   results.map((item) => item.id)
+      // );
 
       continue;
     }
@@ -394,9 +396,9 @@ async function generateAccount() {
     let query = {
       email,
       password,
-      avatar: item.get("note_card").user.avatar,
-      source_id: item.get("note_card").user.user_id,
-      username: item.get("note_card").user.nickname,
+      avatar: user.avatar,
+      source_id: user.user_id,
+      username: user.nickname,
     };
     try {
       const user = new Parse.User();
@@ -408,21 +410,20 @@ async function generateAccount() {
       user.set("avatar", query.avatar);
       user.set("nickName", query.username);
       user.set("downloadFrequency", 0);
-      user.set("otherId", item.get("note_card").user.user_id);
+      user.set("otherId", user.user_id);
       user.set("source", "virtualBook");
       await user.signUp(null, { useMasterKey: true });
-      console.log("已完成：", i);
+      console.log("已完成保存用户：", i);
     } catch (err) {
-      console.log(err, body);
+      console.log(err, query);
     }
   }
 }
-async function generateimg() {
+async function generateAvatar() {
   const { fileTypeFromBuffer } = await import("file-type");
   const User = Parse.Object.extend("_User");
   const userSql = new Parse.Query(User);
   const total = await userSql.count({ useMasterKey: true });
-  // userSql.skip(10);
   userSql.limit(total);
   const results = await userSql.find({ useMasterKey: true });
   const uploadDir = path.join(__dirname, "../upload", "avatar");
@@ -430,7 +431,10 @@ async function generateimg() {
   for (let i = 0; i < results.length; i++) {
     let item = results[i];
     let imageUrl = item.get("avatar");
-
+    if (imageUrl.includes("192.168.31.88:1337")) {
+      // console.log("已经是本地头像");
+      continue;
+    }
     const response = await axios
       .get(imageUrl, { responseType: "arraybuffer" })
       .catch((err) => {
@@ -445,17 +449,18 @@ async function generateimg() {
     const type = await fileTypeFromBuffer(fileBuffer);
 
     const hash = crypto.createHash("md5").update(fileBuffer).digest("hex");
-    console.log(hash);
     const fileName = `${hash}.${type.ext}`;
     const filePath = path.join(uploadDir, fileName);
     if (fs.existsSync(filePath)) {
-      console.log({ skipped: true, filePath, imageUrl, id: item.id });
-      continue;
+      console.log("头像hash一样");
+    } else {
+      await fs.writeFile(filePath, fileBuffer);
     }
-    await fs.writeFile(filePath, fileBuffer);
+
     item.set("avatar", `${process.env.DOMAINNAME}/avatar/${fileName}`);
     await item.save(null, { useMasterKey: true });
   }
+  console.log("保存完毕");
 }
 function getRandomISODateWithinLastYear() {
   // 当前日期
@@ -478,84 +483,183 @@ function getRandomISODateWithinLastYear() {
   // 返回 YYYY-MM-DD HH:mm:ss 格式的日期字符串
   return randomDate.format("YYYY-MM-DD HH:mm:ss");
 }
-// 4586
 async function generatePost() {
   const RedBookPost = Parse.Object.extend("redBookPost");
   const redBookPostSql = new Parse.Query(RedBookPost);
-  redBookPostSql.limit(0);
+  redBookPostSql.limit(10000000);
+  // 排除有 postId 字段的记录
+  redBookPostSql.doesNotExist("postId");
   const postRecord = await redBookPostSql.find({ useMasterKey: true });
   console.log("共有推文：", postRecord.length);
-
   for (let i = 0; i < postRecord.length; i++) {
     let singlePost = postRecord[i];
-    if (singlePost.get("postId")) {
-      console.log("已经存在", singlePost.get("postId"));
+
+    if (!singlePost.get("note_card")?.cover && !singlePost.get("cover")) {
+      console.log("数据缺失", singlePost.id);
       continue;
     }
-    let url = singlePost.get("note_card").cover.url_default;
-    let display_title = singlePost.get("note_card").display_title;
 
-    const response = await axios({
-      url,
-      method: "GET",
-      responseType: "arraybuffer", // 获取原始二进制数据
-    });
-
-    // 将响应数据转换为 Buffer
-    const imageBuffer = Buffer.from(response.data, "binary");
-    if (!response || !response?.data) {
-      console.log("jump", i);
+    let type = singlePost.get("note_card")?.type || singlePost.get("type");
+    if (type === "video") {
+      // console.log("帖子类型为video:", singlePost.id);
       continue;
     }
-    const User = Parse.Object.extend("_User");
-    const userSql = new Parse.Query(User);
-    userSql.equalTo("otherId", singlePost.get("note_card").user.user_id);
-    const currentUser = await userSql.first({ useMasterKey: true });
-    const loginUser = await Parse.User.logIn(
-      currentUser.get("username"),
-      currentUser.get("plainPassword")
-    ); // 假设你已经登录用户
-    const sessionToken = loginUser.getSessionToken();
+    let cover = singlePost.get("note_card")?.cover || singlePost.get("cover");
 
-    // 创建 FormData 实例
-    const form = new FormData();
-    form.append("files", imageBuffer, {
-      filename: "example.jpg",
-    });
-    form.append("content", display_title);
-    axios
-      .post("http://192.168.31.88:1337/post/creatdPost", form, {
-        headers: {
-          Authorization: sessionToken,
-          ...form.getHeaders(), // 添加 FormData 的 headers
-        },
-      })
-      .then((res) => {
-        let postId = res.data.data;
-        singlePost.set("postId", postId);
-        singlePost
-          .save(null, { useMasterKey: true })
-          .then(() => console.log(postId, i))
-          .catch((err) => console.log(err));
+    let user = singlePost.get("note_card")?.user || singlePost.get("user");
+    let url = cover.url_default;
+    let display_title =
+      singlePost.get("display_title") ||
+      singlePost.get("note_card").display_title;
+
+    try {
+      const response = await axios({
+        url,
+        method: "GET",
+        responseType: "arraybuffer", // 获取原始二进制数据
       });
+
+      // 将响应数据转换为 Buffer
+      const imageBuffer = Buffer.from(response.data, "binary");
+      if (!response || !response?.data) {
+        console.log("jump", i);
+        continue;
+      }
+      const User = Parse.Object.extend("_User");
+      const userSql = new Parse.Query(User);
+      userSql.equalTo("otherId", user.user_id);
+      const currentUser = await userSql.first({ useMasterKey: true });
+      const loginUser = await Parse.User.logIn(
+        currentUser.get("username"),
+        currentUser.get("plainPassword")
+      ); // 假设你已经登录用户
+      const sessionToken = loginUser.getSessionToken();
+
+      // 创建 FormData 实例
+      const form = new FormData();
+      form.append("files", imageBuffer, {
+        filename: "example.jpg",
+      });
+      form.append("content", display_title || "");
+      axios
+        .post("http://192.168.31.88:1337/post/creatdPost", form, {
+          headers: {
+            Authorization: sessionToken,
+            ...form.getHeaders(), // 添加 FormData 的 headers
+          },
+        })
+        .then((res) => {
+          let postId = res.data.data;
+          singlePost.set("postId", postId);
+          singlePost
+            .save(null, { useMasterKey: true })
+            .then(() => console.log("保存成功", postId, i))
+            .catch((err) => console.log("err si", err));
+        });
+    } catch (err) {
+      // singlePost.destroy({ useMasterKey: true });
+      console.log(err, i, singlePost.get("id"));
+
+      // console.log(i, singlePost.get("id"), err.response, "err jump");
+    }
   }
+  console.log("保存完毕post");
 }
 
-async function generatePostTime() {
+async function generatePostLike() {
+  const redPostQuery = new Parse.Query("redBookPost");
+  redPostQuery.limit(100000);
+  redPostQuery.exists("postId");
+  redPostQuery.doesNotExist("isLikeSync");
+  const redPosts = await redPostQuery.find({ useMasterKey: true });
+  console.log(redPosts.length, "待同步点赞帖子total");
+
+  for (let i = 0; i < redPosts.length; i++) {
+    let item = redPosts[i];
+    let postId = item.get("postId");
+
+    const postQuery = new Parse.Query("Post");
+    postQuery.equalTo("objectId", postId);
+    const singlePost = await postQuery.first({ useMasterKey: true });
+    if (!singlePost) {
+      console.log(postId, "帖子不存在");
+
+      continue;
+    }
+
+    let likeCount = Number(
+      item.get("note_card")?.interact_info.liked_count ||
+        item.get("interact_info")?.liked_count
+    );
+    let maxWidth =
+      item.get("note_card")?.cover.width || item.get("cover")?.width;
+    let maxHeight =
+      item.get("note_card")?.cover.height || item.get("cover")?.height;
+    singlePost.set("likeCount", likeCount);
+    singlePost.set("customCreatedAt", getRandomISODateWithinLastYear());
+    singlePost.set("maxWidth", maxWidth);
+    singlePost.set("maxHeight", maxHeight);
+    await singlePost.save(null, { useMasterKey: true });
+    item.set("isLikeSync", true);
+    await item.save(null, { useMasterKey: true });
+    console.log(postId, "已同步", likeCount, maxWidth, maxHeight);
+  }
+  console.log("同步完毕:", redPosts.length);
+}
+
+async function excludeTypeVideoPost() {
+  const redPostQuery = new Parse.Query("redBookPost");
+  redPostQuery.limit(100000);
+  redPostQuery.exists("postId");
+  const redPosts = await redPostQuery.find({ useMasterKey: true });
+  console.log(redPosts.length, "video类型帖子");
+
+  for (let i = 0; i < redPosts.length; i++) {
+    let item = redPosts[i];
+    let postId = item.get("postId");
+
+    const postQuery = new Parse.Query("Post");
+    postQuery.equalTo("objectId", postId);
+    const singlePost = await postQuery.first({ useMasterKey: true });
+    if (!singlePost) {
+      console.log(postId, "帖子不存在");
+      continue;
+    }
+    await singlePost.destroy({ useMasterKey: true });
+  }
+  console.log("删除完毕:", redPosts.length);
+}
+async function setBelongIdPost() {
   const postQuery = new Parse.Query("Post");
-  postQuery.limit(10000000);
+  postQuery.limit(10000000000);
   const posts = await postQuery.find({ useMasterKey: true });
   for (let i = 0; i < posts.length; i++) {
-    let item = posts[i];
-    item.set("customCreatedAt", getRandomISODateWithinLastYear());
-    try {
-      let a = await item.save(null, { useMasterKey: true });
-      console.log(a.get("customCreatedAt"));
-    } catch (err) {
-      console.log(err);
+    let singlePost = posts[i];
+    const wallQuery = new Parse.Query("PostWall");
+    const contentQuery = new Parse.Query("PostContent");
+    if (singlePost.get("wallId")) {
+      let afterWall = await wallQuery.get(singlePost.get("wallId"));
+      afterWall.set("belongId", singlePost.id);
+      await afterWall.save(null, { useMasterKey: true });
     }
+    if (singlePost.get("contentId")) {
+      let afterContent = await contentQuery.get(singlePost.get("contentId"));
+
+      afterContent.set("belongId", singlePost.id);
+
+      await afterContent.save(null, { useMasterKey: true });
+    }
+    console.log("current 已经完成", i, singlePost.id);
   }
+  console.log("全部完毕");
 }
-// setTimeout(() => generatePostTime(), 1000);
-// setInterval(getRandomISODateWithinLastYear, 1000);
+// setTimeout(() => setBelongIdPost(), 1000);
+// setTimeout(async () => {
+// await generateAccount();
+// await generateAvatar();
+// await generatePost();
+// await generatePostLike()
+// }, 1000);
+// setTimeout(() => generatePostLike(), 1000);
+// setTimeout(() => excludeTypeVideoPost(), 1000);
 module.exports = Router;
