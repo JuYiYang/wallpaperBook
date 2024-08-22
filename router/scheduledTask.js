@@ -30,7 +30,7 @@ const updateWeight = async () => {
 };
 async function updatePostWeight(postId) {
   const postQuery = new Parse.Query("Post");
-  const post = await postQuery.get(postId);
+  const post = await postQuery.get(postId, { useMasterKey: true });
 
   const id = post.id;
   let likeCount = post.get("likeCount") || 0;
