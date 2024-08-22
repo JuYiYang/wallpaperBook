@@ -40,14 +40,14 @@ const withPostfindDetail = async (singlePost, currentUsreId) => {
   let wallId = singlePost.get("wallId") || "";
 
   // 被点赞内容的 ID
-  let contentId = singlePost.get("contentId");
+  let contentId = singlePost.get("contentId") || "";
 
   // 图
   const wallQuery = new Parse.Query("PostWall");
   wallQuery.containedIn("objectId", wallId.split(","));
 
   // 文
-  const contentQuery = new Parse.Query("PostContentInfo");
+  const contentQuery = new Parse.Query("PostContent");
   contentQuery.equalTo("objectId", contentId);
 
   // 当前用户是否点赞
