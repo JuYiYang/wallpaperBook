@@ -9,7 +9,7 @@ const Router = express.Router();
 const Post = Parse.Object.extend("Post");
 const PostWall = Parse.Object.extend("PostWall");
 const PostContentInfo = Parse.Object.extend("PostContent");
-
+const { delPostInfo } = require("../../utils/utils");
 const {
   getPostAdditionalValue,
   withPostfindDetail,
@@ -23,9 +23,9 @@ Router.post("/creatdPost", multiple, async (req, res) => {
     return res.customErrorSend("缺少必要参数！");
   }
   try {
-    let postId = await createPost(req.files, req.user, req.body);
+    let post = await createPost(req.files, req.user, req.body);
 
-    res.customSend(postId);
+    res.customSend(await withPostfindDetail(post));
   } catch (err) {
     console.log(err);
     res.customErrorSend(err);
@@ -108,9 +108,8 @@ const createPost = async (images, user, body) => {
       console.log("set content belongId", err);
     });
   }
-  console.log(singlePost.id);
 
-  return singlePost.id;
+  return singlePost;
 };
 
 // 删除帖子
@@ -126,11 +125,14 @@ Router.delete(
       const postQuery = new Parse.Query(Post);
       const singlePost = await postQuery.get(req.body.id);
 
-      if (singlePost.get("creator") !== req.user.id) {
+      if (
+        singlePost.get("creator") !== req.user.id &&
+        req.user.id != "jLEADQV7nL" // juyiyang@qq.com
+      ) {
         return res.customErrorSend("暂无权限");
       }
-
-      await singlePost.destroy();
+      await delPostInfo(singlePost);
+      // await singlePost.destroy();
       res.customSend("success");
     } catch (error) {
       res.customErrorSend("帖子不存在或权限不足");
@@ -238,6 +240,7 @@ Router.get("/myPost", async (req, res) => {
     res.customErrorSend(error.message, error.code);
   }
 });
+
 Router.get(
   "/keyWord",
   validateParams(
@@ -261,20 +264,37 @@ Router.get(
 
       const regexPattern = characters.join("|");
       const postContentQuery = new Parse.Query("PostContent");
+
+      const pageView = Parse.Object.extend("PostBrowseHistory");
+      const pageViewQuery = new Parse.Query(pageView);
+      pageViewQuery.equalTo("creatorId", req.user?.id);
+      let pageViewRecord = await pageViewQuery.findAll({ useMasterKey: true });
+      postContentQuery.notContainedIn(
+        "belongId",
+        pageViewRecord.map((item) => item.get("postId"))
+      );
+
       postContentQuery.skip(skip);
       postContentQuery.limit(parseInt(pageSize));
-      postContentQuery.matches("content", regexPattern);
+      postContentQuery.matches("content", keyWord);
+      // postContentQuery.matches("content", regexPattern);
       const total = await postContentQuery.count({ useMasterKey: true });
       const record = await postContentQuery.find({ useMasterKey: true });
       let recordLength = record.length;
       let result = [];
+
       for (let i = 0; i < recordLength; i++) {
         const postQuery = new Parse.Query(Post);
+
         const singlePost = await postQuery.get(record[i].get("belongId"));
         result.push(await withPostfindDetail(singlePost, req.user.id));
       }
-
-      res.customSend({ total: result.length, result });
+      res.customSend({
+        total: result.length,
+        records: result,
+        nextPage: false,
+        isLogin: true,
+      });
     } catch (error) {
       res.customErrorSend(error.message, error.code);
     }

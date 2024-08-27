@@ -34,6 +34,7 @@ const keyWords = [
 let timer;
 const Wall = Parse.Object.extend("Wall");
 const uploadDir = path.join(__dirname, "../upload", "network");
+const { delPostInfo } = require("../utils/utils");
 const reqDuiTangData = async (query, sendEvent, current) => {
   const ReptileRecord = Parse.Object.extend("ReptileRecord");
   const reptileRecord = new ReptileRecord();
@@ -279,12 +280,11 @@ Router.post("/redBook", async (req, res) => {
     return;
   }
   const record = req.body.data.items || req.body.data.notes;
-  console.log(req.body.data.cursor_score || record.length);
-
   for (let i = 0; i < record.length; i++) {
     let item = record[i];
     const dtQuery = new Parse.Query(RedBookPost);
-    dtQuery.equalTo("source_id", item["id"]);
+
+    dtQuery.equalTo("source_id", item["id"] || item["note_id"]);
     let history = await dtQuery.find({ useMasterKey: true });
     if (history.length) {
       console.log("jump 重复", history[0].id);
@@ -321,7 +321,9 @@ Router.get("/redBook", async (req, res) => {
   let html = "";
   let src = "";
   record.forEach((item) => {
-    let url = item.get("note_card").cover.url_default;
+    let cover = item.get("note_card")?.cover || item.get("cover");
+
+    let url = cover.url_default;
     src += `${url};`;
     html += ` <a href="${url}" target="_blank"><img src='${url}'/ style="width:200px;height:200px;object-fit: cover;"></a>`;
   });
@@ -380,14 +382,15 @@ async function generateAccount() {
     }
 
     let user = item.get("note_card")?.user || item.get("user");
+
     const userSql = new Parse.Query(User);
     userSql.equalTo("otherId", user.user_id);
     const results = await userSql.find({ useMasterKey: true });
     if (results.length) {
-      // console.log(
-      //   "第" + i + "条数据id重复",
-      //   results.map((item) => item.id)
-      // );
+      console.log(
+        "第" + i + "条数据id重复",
+        results.map((item) => item.id)
+      );
 
       continue;
     }
@@ -401,22 +404,24 @@ async function generateAccount() {
       username: user.nickname,
     };
     try {
-      const user = new Parse.User();
+      const puser = new Parse.User();
 
-      user.set("email", query.email);
-      user.set("username", query.email);
-      user.set("plainPassword", query.password);
-      user.set("password", query.password);
-      user.set("avatar", query.avatar);
-      user.set("nickName", query.username);
-      user.set("downloadFrequency", 0);
-      user.set("otherId", user.user_id);
-      user.set("source", "virtualBook");
-      await user.signUp(null, { useMasterKey: true });
-      console.log("已完成保存用户：", i);
+      puser.set("email", query.email);
+      puser.set("username", query.email);
+      puser.set("plainPassword", query.password);
+      puser.set("password", query.password);
+      puser.set("avatar", query.avatar);
+      puser.set("nickName", query.username);
+      puser.set("downloadFrequency", 0);
+
+      puser.set("otherId", query.source_id);
+      puser.set("source", "virtualBook");
+      await puser.signUp(null, { useMasterKey: true });
+      console.log("已完成保存用户：", i + 1);
     } catch (err) {
       console.log(err, query);
     }
+    console.log("全部保存完毕！");
   }
 }
 async function generateAvatar() {
@@ -452,7 +457,7 @@ async function generateAvatar() {
     const fileName = `${hash}.${type.ext}`;
     const filePath = path.join(uploadDir, fileName);
     if (fs.existsSync(filePath)) {
-      console.log("头像hash一样");
+      console.log("头像hash一样", i);
     } else {
       await fs.writeFile(filePath, fileBuffer);
     }
@@ -486,7 +491,7 @@ function getRandomISODateWithinLastYear() {
 async function generatePost() {
   const RedBookPost = Parse.Object.extend("redBookPost");
   const redBookPostSql = new Parse.Query(RedBookPost);
-  redBookPostSql.limit(10000000);
+  redBookPostSql.limit(1000000000);
   // 排除有 postId 字段的记录
   redBookPostSql.doesNotExist("postId");
   const postRecord = await redBookPostSql.find({ useMasterKey: true });
@@ -501,7 +506,7 @@ async function generatePost() {
 
     let type = singlePost.get("note_card")?.type || singlePost.get("type");
     if (type === "video") {
-      // console.log("帖子类型为video:", singlePost.id);
+      console.log("帖子类型为video:", i, singlePost.id);
       continue;
     }
     let cover = singlePost.get("note_card")?.cover || singlePost.get("cover");
@@ -538,7 +543,7 @@ async function generatePost() {
       // 创建 FormData 实例
       const form = new FormData();
       form.append("files", imageBuffer, {
-        filename: "example.jpg",
+        filename: Date.now() + ".jpg",
       });
       form.append("content", display_title || "");
       axios
@@ -549,28 +554,28 @@ async function generatePost() {
           },
         })
         .then((res) => {
-          let postId = res.data.data;
-          singlePost.set("postId", postId);
+          let postInfo = res.data.data;
+          singlePost.set("postId", postInfo.id);
           singlePost
             .save(null, { useMasterKey: true })
-            .then(() => console.log("保存成功", postId, i))
+            .then(() => console.log("保存成功", postInfo.id, i))
             .catch((err) => console.log("err si", err));
         });
     } catch (err) {
       // singlePost.destroy({ useMasterKey: true });
       console.log(err, i, singlePost.get("id"));
-
+      return;
       // console.log(i, singlePost.get("id"), err.response, "err jump");
     }
   }
   console.log("保存完毕post");
 }
-
+// bRquDfY1rE
 async function generatePostLike() {
   const redPostQuery = new Parse.Query("redBookPost");
   redPostQuery.limit(100000);
   redPostQuery.exists("postId");
-  redPostQuery.doesNotExist("isLikeSync");
+  // redPostQuery.doesNotExist("isLikeSync");
   const redPosts = await redPostQuery.find({ useMasterKey: true });
   console.log(redPosts.length, "待同步点赞帖子total");
 
@@ -583,7 +588,6 @@ async function generatePostLike() {
     const singlePost = await postQuery.first({ useMasterKey: true });
     if (!singlePost) {
       console.log(postId, "帖子不存在");
-
       continue;
     }
 
@@ -653,13 +657,117 @@ async function setBelongIdPost() {
   }
   console.log("全部完毕");
 }
+
+async function deleteNotOtherIdAdnNotPost() {
+  const userSql = new Parse.Query("User");
+  userSql.doesNotExist("otherId");
+
+  const total = await userSql.count({ useMasterKey: true });
+  userSql.limit(total);
+  const record = await userSql.find({ useMasterKey: true });
+  for (let i = 0; i < record.length; i++) {
+    let item = record[i];
+    const postQuery = new Parse.Query("Post");
+    postQuery.equalTo("creator", item.id);
+    const submitPosts = await postQuery.find({ useMasterKey: true });
+    if (!submitPosts.length) {
+      item.destroy({ useMasterKey: true }).then((res) => {
+        console.log(item.id, "用户已被删除");
+      });
+      continue;
+    }
+  }
+}
+// 根据content 来关联帖子
+async function useContentSyncPostId() {
+  const RedBookPost = Parse.Object.extend("redBookPost");
+  const redBookPostSql = new Parse.Query(RedBookPost);
+  redBookPostSql.limit(1000000000);
+  // 排除有 postId 字段的记录
+  redBookPostSql.doesNotExist("postId");
+  const redBookPostRecord = await redBookPostSql.find({ useMasterKey: true });
+  console.log("共有推文：", redBookPostRecord.length);
+  let count = 0;
+  let notCount = 0;
+  let videoCount = 0;
+  for (let i = 0; i < redBookPostRecord.length; i++) {
+    let item = redBookPostRecord[i];
+    const postContentSql = new Parse.Query("PostContent");
+    let display_title =
+      item.get("display_title") || item.get("note_card").display_title;
+    postContentSql.equalTo("content", display_title);
+    const singlePostContent = await postContentSql.first({
+      useMasterKey: true,
+    });
+    let type = item.get("note_card")?.type || item.get("type");
+    if (type === "video") {
+      videoCount++;
+      continue;
+    }
+    if (!singlePostContent) {
+      console.log("未匹配到Content", i, item.id);
+      notCount++;
+      continue;
+    }
+
+    item.set("postId", singlePostContent.get("belongId"));
+
+    await item.save(null, { useMasterKey: true });
+    count++;
+  }
+  console.log("已经完成：", count);
+  console.log("视频video:", videoCount);
+  console.log("未匹配:", notCount);
+}
+// 删除无用帖子
+async function deleteNotContentPost() {
+  const postSql = new Parse.Query("Post");
+  postSql.limit(100000);
+  // 排除有 postId 字段的记录
+  postSql.doesNotExist("contentId");
+  const postRecord = await postSql.find({ useMasterKey: true });
+  console.log("共有推文：", postRecord.length);
+  let notCount = 0;
+  for (let i = 0; i < postRecord.length; i++) {
+    let item = postRecord[i];
+    const redBookPostSql = new Parse.Query("redBookPost");
+
+    redBookPostSql.equalTo("belongId", item.id);
+    let redBookPost = await redBookPostSql.first({ useMasterKey: true });
+    if (!redBookPost) {
+      notCount++;
+
+      // item.destroy({useMasterKey:true})
+      delPostInfo(item);
+
+      continue;
+    }
+  }
+}
+
+async function downloadPostImg() {
+  const redBookPostSql = new Parse.Query("redBookPost");
+  redBookPostSql.exists("postId");
+  const record = await redBookPostSql.find({ useMasterKey: true });
+  console.log(record.length);
+  for (let i = 0; i < record.length; i++) {
+    let item = record[i];
+    item.unset("postId");
+
+    await item.save(null, { useMasterKey: true });
+    console.log("删除成功", i);
+  }
+}
 // setTimeout(() => setBelongIdPost(), 1000);
-// setTimeout(async () => {
-// await generateAccount();
-// await generateAvatar();
-// await generatePost();
-// await generatePostLike()
-// }, 1000);
+setTimeout(async () => {
+  // await downloadPostImg();
+  // await generateAccount();
+  // await generateAvatar();
+  // await generatePost();
+  // await deleteNotContentPost();
+  // await generatePostLike();
+}, 1000);
 // setTimeout(() => generatePostLike(), 1000);
 // setTimeout(() => excludeTypeVideoPost(), 1000);
+
 module.exports = Router;

@@ -1,3 +1,5 @@
+const fs = require("fs-extra");
+const path = require("path");
 /**
  * 生成一个在 min 和 max 之间的随机整数
  * @param {number} min - 范围的最小值（包含）
@@ -93,9 +95,69 @@ const withPostfindDetail = async (singlePost, currentUsreId) => {
     commentCount: singlePost.get("commentCount") || 0,
   };
 };
+/**
+ * 根据postId删除所有有关信息
+ * @param {string|object} post - 帖子id
+ */
+const delPostInfo = async (post) => {
+  let info;
+  if (typeof post === "string") {
+    const postSql = new Parse.Query("Post");
+    postSql.equalTo("objectId", post);
+    let singlePost = postSql.first({ useMasterKey: true });
+    if (!singlePost) {
+      return new Error("帖子不存在");
+    }
+    info = singlePost;
+  } else {
+    info = post;
+  }
+  let contentId = info.get("contentId");
+  let wallId = info.get("wallId");
+
+  if (contentId) {
+    const postContentSql = new Parse.Query("PostContent");
+    postContentSql.equalTo("objectId", contentId);
+    let postContent = await postContentSql.first({ useMasterKey: true });
+    if (!postContent) {
+      return new Error("文 不存在", contentId);
+    }
+    await postContent.destroy({ useMasterKey: true });
+    console.log("文已删除");
+  }
+
+  if (wallId) {
+    const postWallSql = new Parse.Query("PostWall");
+    postWallSql.equalTo("objectId", wallId);
+    let postWall = await postWallSql.first({ useMasterKey: true });
+    if (!postWall) {
+      return new Error("图 不存在", wallId);
+    }
+
+    let wallUrls = postWall.get("imageUrl").split(",");
+
+    for (let index = 0; index < wallUrls.length; index++) {
+      const element = wallUrls[index];
+      const url = element.match(/\/static\/(.+)/)[1];
+      let filePath = path.join(__dirname, "../upload", "images", url);
+      fs.remove(filePath)
+        .then(() => {
+          console.log("文件已成功删除", url);
+        })
+        .catch((err) => {
+          console.error("删除文件时出错:", err);
+        });
+    }
+
+    await postWall.destroy({ useMasterKey: true });
+  }
+  await info.destroy({ useMasterKey: true });
+  console.log(info.id, "已删除");
+};
 
 module.exports = {
   getRandomIntInRange,
   getPostAdditionalValue,
   withPostfindDetail,
+  delPostInfo,
 };
