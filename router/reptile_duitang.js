@@ -296,14 +296,12 @@ Router.post("/redBook", async (req, res) => {
         redBookPost.set("source_id", item[key]);
         continue;
       }
-      if (key == "note_card" && item[key]?.image_list) {
-        console.log("多图", item.id);
-      }
 
       redBookPost.set(key, item[key]);
     }
     let afterInfo = await redBookPost.save(null, { useMasterKey: true });
-    console.log("保存", afterInfo.id);
+
+    console.log(item["note_card"]?.image_list ? "多图" : "保存", afterInfo.id);
   }
   res.customSend();
 });
@@ -537,7 +535,6 @@ async function generatePost() {
             responseType: "arraybuffer", // 获取原始二进制数据
           });
 
-          console.log(info_url);
           if (!response || !response?.data) {
             console.log("jump", i);
             continue;
@@ -595,7 +592,13 @@ async function generatePost() {
           singlePost.set("postId", postInfo.id);
           singlePost
             .save(null, { useMasterKey: true })
-            .then(() => console.log("保存成功", postInfo.id, i))
+            .then(() =>
+              console.log(
+                "保存成功",
+                postInfo.id,
+                imgList && imgList.length ? imgList.length : 1
+              )
+            )
             .catch((err) => console.log("err si", err));
         })
         .catch((err) => {
@@ -766,7 +769,7 @@ async function useContentSyncPostId() {
   console.log("视频video:", videoCount);
   console.log("未匹配:", notCount);
 }
-// 删除无用帖子
+// 删除无content帖子
 async function deleteNotContentPost() {
   const postSql = new Parse.Query("Post");
   postSql.limit(100000);
@@ -791,7 +794,34 @@ async function deleteNotContentPost() {
     }
   }
 }
+// 删除type===video帖子
+async function deleteTypeVideoPost() {
+  const query = new Parse.Query("redBookPost");
 
+  // 创建两个查询条件
+  const noteCardTypeQuery = new Parse.Query("redBookPost");
+  noteCardTypeQuery.equalTo("note_card.type", "video");
+  const typeQuery = new Parse.Query("redBookPost");
+  typeQuery.equalTo("type", "video");
+
+  // 结合两个查询条件
+  const mainQuery = Parse.Query.or(noteCardTypeQuery, typeQuery);
+  mainQuery.limit(10000);
+  mainQuery
+    .find()
+    .then(async (results) => {
+      console.log("成功获取数据:", results.length);
+      for (let index = 0; index < results.length; index++) {
+        const element = results[index];
+        await element.destroy({ useMasterKey: true });
+        console.log("已删除", element.id);
+      }
+      console.log("完成删除Video");
+    })
+    .catch((error) => {
+      console.error("查询失败:", error);
+    });
+}
 async function downloadPostImg() {
   const redBookPostSql = new Parse.Query("redBookPost");
   redBookPostSql.exists("postId");
@@ -808,10 +838,11 @@ async function downloadPostImg() {
 // setTimeout(() => setBelongIdPost(), 1000);
 setTimeout(async () => {
   // await generateAccount();
-  await generateAvatar();
+  // await generateAvatar();
   // await generatePost();
-  // await deleteNotContentPost();
   // await generatePostLike();
+  // await deleteNotContentPost();
+  // await deleteTypeVideoPost();
 }, 1000);
 // setTimeout(() => generatePostLike(), 1000);
 // setTimeout(() => excludeTypeVideoPost(), 1000);
