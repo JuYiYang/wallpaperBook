@@ -18,5 +18,5 @@ const uploadHandler = multer({
 });
 
 exports.single = uploadHandler.single("file");
-exports.multiple = uploadHandler.array("files", 10);
+exports.multiple = uploadHandler.array("files", 20);
 exports.uploadHandler = uploadHandler;
