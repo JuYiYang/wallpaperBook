@@ -24,7 +24,6 @@ Router.post("/creatdPost", multiple, async (req, res) => {
   }
   try {
     let post = await createPost(req.files, req.user, req.body);
-
     res.customSend(await withPostfindDetail(post));
   } catch (err) {
     console.log(err);
@@ -95,11 +94,15 @@ const createPost = async (images, user, body) => {
   const wallQuery = new Parse.Query("PostWall");
   const contentQuery = new Parse.Query("PostContent");
   if (singlePost.get("wallId")) {
-    let afterWall = await wallQuery.get(singlePost.get("wallId"));
-    afterWall.set("belongId", singlePost.id);
-    afterWall.save(null, { useMasterKey: true }).catch((err) => {
-      console.log("set wall belongId", err);
-    });
+    let wallIds = singlePost.get("wallId").split(",");
+    for (let index = 0; index < wallIds.length; index++) {
+      const element = wallIds[index];
+      let afterWall = await wallQuery.get(element);
+      afterWall.set("belongId", singlePost.id);
+      afterWall.save(null, { useMasterKey: true }).catch((err) => {
+        console.log("set wall belongId", err);
+      });
+    }
   }
   if (singlePost.get("contentId")) {
     let afterContent = await contentQuery.get(singlePost.get("contentId"));
@@ -131,11 +134,11 @@ Router.delete(
       ) {
         return res.customErrorSend("暂无权限");
       }
+
       await delPostInfo(singlePost);
-      // await singlePost.destroy();
       res.customSend("success");
     } catch (error) {
-      res.customErrorSend("帖子不存在或权限不足");
+      res.customErrorSend(error.message || "帖子不存在或权限不足");
     }
   }
 );
@@ -276,16 +279,20 @@ Router.get(
 
       postContentQuery.skip(skip);
       postContentQuery.limit(parseInt(pageSize));
-      postContentQuery.matches("content", keyWord);
-      // postContentQuery.matches("content", regexPattern);
+      // postContentQuery.matches("content", keyWord);
+      postContentQuery.matches("content", regexPattern);
       const total = await postContentQuery.count({ useMasterKey: true });
       const record = await postContentQuery.find({ useMasterKey: true });
       let recordLength = record.length;
       let result = [];
 
       for (let i = 0; i < recordLength; i++) {
-        const postQuery = new Parse.Query(Post);
+        if (!record[i].get("belongId")) {
+          console.log("缺失belongId", record[i].id);
 
+          continue;
+        }
+        const postQuery = new Parse.Query(Post);
         const singlePost = await postQuery.get(record[i].get("belongId"));
         result.push(await withPostfindDetail(singlePost, req.user.id));
       }
@@ -296,6 +303,8 @@ Router.get(
         isLogin: true,
       });
     } catch (error) {
+      console.log(error);
+
       res.customErrorSend(error.message, error.code);
     }
   }
