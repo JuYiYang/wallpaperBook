@@ -173,11 +173,16 @@ Router.get(
       const pageView = Parse.Object.extend("PostBrowseHistory");
       const pageViewQuery = new Parse.Query(pageView);
       pageViewQuery.equalTo("creatorId", req.user?.id);
-      let pageViewRecord = await pageViewQuery.findAll({ useMasterKey: true });
+      let pageViewRecord = await pageViewQuery.aggregate(
+        { $group: { _id: "$postId" } },
+        {
+          useMasterKey: true,
+        }
+      );
 
       postQuery.notContainedIn(
         "objectId",
-        pageViewRecord.map((item) => item.get("postId"))
+        pageViewRecord.map((item) => item.objectId)
       );
     }
     const postResult = await postQuery.find({ useMasterKey: true }); // 按创建时间降序排序
@@ -188,6 +193,7 @@ Router.get(
       postRecords.push(await withPostfindDetail(postResult[i], req.user?.id));
     }
     const total = await postQuery.count({ useMasterKey: true });
+
     res.customSend({
       nextPage: page * pageSize < total,
       isLogin,
