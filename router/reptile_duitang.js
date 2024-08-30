@@ -296,6 +296,10 @@ Router.post("/redBook", async (req, res) => {
         redBookPost.set("source_id", item[key]);
         continue;
       }
+      if (key == "note_card" && item[key]?.image_list) {
+        console.log("多图", item.id);
+      }
+
       redBookPost.set(key, item[key]);
     }
     let afterInfo = await redBookPost.save(null, { useMasterKey: true });
@@ -387,10 +391,10 @@ async function generateAccount() {
     userSql.equalTo("otherId", user.user_id);
     const results = await userSql.find({ useMasterKey: true });
     if (results.length) {
-      console.log(
-        "第" + i + "条数据id重复",
-        results.map((item) => item.id)
-      );
+      // console.log(
+      //   "第" + i + "条数据id重复",
+      //   results.map((item) => item.id)
+      // );
 
       continue;
     }
@@ -421,8 +425,8 @@ async function generateAccount() {
     } catch (err) {
       console.log(err, query);
     }
-    console.log("全部保存完毕！");
   }
+  console.log("全部保存完毕！");
 }
 async function generateAvatar() {
   const { fileTypeFromBuffer } = await import("file-type");
@@ -506,30 +510,59 @@ async function generatePost() {
 
     let type = singlePost.get("note_card")?.type || singlePost.get("type");
     if (type === "video") {
-      console.log("帖子类型为video:", i, singlePost.id);
+      // console.log("帖子类型为video:", i, singlePost.id);
       continue;
     }
     let cover = singlePost.get("note_card")?.cover || singlePost.get("cover");
-
+    let imgList =
+      singlePost.get("note_card")?.image_list || singlePost.get("image_list");
     let user = singlePost.get("note_card")?.user || singlePost.get("user");
     let url = cover.url_default;
     let display_title =
       singlePost.get("display_title") ||
       singlePost.get("note_card").display_title;
-
+    let imageBuffers = [];
     try {
-      const response = await axios({
-        url,
-        method: "GET",
-        responseType: "arraybuffer", // 获取原始二进制数据
-      });
+      if (imgList && imgList.length) {
+        for (let img = 0; img < imgList.length; img++) {
+          let info_url = imgList[img].info_list[0]?.url;
+          if (!info_url) {
+            console.log("info_list", i, singlePost.id);
+            continue;
+          }
 
-      // 将响应数据转换为 Buffer
-      const imageBuffer = Buffer.from(response.data, "binary");
-      if (!response || !response?.data) {
-        console.log("jump", i);
-        continue;
+          const response = await axios({
+            url: info_url,
+            method: "GET",
+            responseType: "arraybuffer", // 获取原始二进制数据
+          });
+
+          console.log(info_url);
+          if (!response || !response?.data) {
+            console.log("jump", i);
+            continue;
+          }
+
+          // 将响应数据转换为 Buffer
+          const imageBuffer = Buffer.from(response.data, "binary");
+          imageBuffers.push(imageBuffer);
+        }
+      } else {
+        const response = await axios({
+          url,
+          method: "GET",
+          responseType: "arraybuffer", // 获取原始二进制数据
+        });
+
+        if (!response || !response?.data) {
+          console.log("jump", i);
+          continue;
+        }
+        // 将响应数据转换为 Buffer
+        const imageBuffer = Buffer.from(response.data, "binary");
+        imageBuffers.push(imageBuffer);
       }
+
       const User = Parse.Object.extend("_User");
       const userSql = new Parse.Query(User);
       userSql.equalTo("otherId", user.user_id);
@@ -542,9 +575,12 @@ async function generatePost() {
 
       // 创建 FormData 实例
       const form = new FormData();
-      form.append("files", imageBuffer, {
-        filename: Date.now() + ".jpg",
+      imageBuffers.forEach((buffer, index) => {
+        form.append("files", buffer, {
+          filename: Date.now() + `_${index}.jpg`,
+        });
       });
+
       form.append("content", display_title || "");
       axios
         .post("http://192.168.31.88:1337/post/creatdPost", form, {
@@ -555,27 +591,38 @@ async function generatePost() {
         })
         .then((res) => {
           let postInfo = res.data.data;
+
           singlePost.set("postId", postInfo.id);
           singlePost
             .save(null, { useMasterKey: true })
             .then(() => console.log("保存成功", postInfo.id, i))
             .catch((err) => console.log("err si", err));
+        })
+        .catch((err) => {
+          console.log("保存失败帖子", err);
         });
     } catch (err) {
-      // singlePost.destroy({ useMasterKey: true });
-      console.log(err, i, singlePost.get("id"));
-      return;
-      // console.log(i, singlePost.get("id"), err.response, "err jump");
+      if (String(err) === "AxiosError: Request failed with status code 403") {
+        console.log("图片不能访问", singlePost.id);
+
+        singlePost.destroy({ useMasterKey: true });
+      } else if (String(err) === "Error: connect ECONNREFUSED ::1:80") {
+        console.log("图片不能访问 content", singlePost.id);
+        singlePost.destroy({ useMasterKey: true });
+
+        return;
+      } else {
+        console.log(i, singlePost.id, err, "err jump");
+      }
     }
   }
   console.log("保存完毕post");
 }
-// bRquDfY1rE
 async function generatePostLike() {
   const redPostQuery = new Parse.Query("redBookPost");
   redPostQuery.limit(100000);
   redPostQuery.exists("postId");
-  // redPostQuery.doesNotExist("isLikeSync");
+  redPostQuery.doesNotExist("isLikeSync");
   const redPosts = await redPostQuery.find({ useMasterKey: true });
   console.log(redPosts.length, "待同步点赞帖子total");
 
@@ -760,9 +807,8 @@ async function downloadPostImg() {
 }
 // setTimeout(() => setBelongIdPost(), 1000);
 setTimeout(async () => {
-  // await downloadPostImg();
   // await generateAccount();
-  // await generateAvatar();
+  await generateAvatar();
   // await generatePost();
   // await deleteNotContentPost();
   // await generatePostLike();
