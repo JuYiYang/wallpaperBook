@@ -106,12 +106,13 @@ const delPostInfo = async (post) => {
     postSql.equalTo("objectId", post);
     let singlePost = postSql.first({ useMasterKey: true });
     if (!singlePost) {
-      return new Error("帖子不存在");
+      throw new Error("帖子不存在");
     }
     info = singlePost;
   } else {
     info = post;
   }
+
   let contentId = info.get("contentId");
   let wallId = info.get("wallId");
 
@@ -120,10 +121,12 @@ const delPostInfo = async (post) => {
     postContentSql.equalTo("objectId", contentId);
     let postContent = await postContentSql.first({ useMasterKey: true });
     if (!postContent) {
-      return new Error("文 不存在", contentId);
+      // throw new Error("文 不存在", contentId);
+      console.log("文 不存在", contentId);
+    } else {
+      await postContent.destroy({ useMasterKey: true });
+      console.log("文已删除");
     }
-    await postContent.destroy({ useMasterKey: true });
-    console.log("文已删除");
   }
 
   if (wallId) {
@@ -131,25 +134,26 @@ const delPostInfo = async (post) => {
     postWallSql.equalTo("objectId", wallId);
     let postWall = await postWallSql.first({ useMasterKey: true });
     if (!postWall) {
-      return new Error("图 不存在", wallId);
+      // throw new Error("图 不存在", wallId);
+      console.log("图 不存在", wallId);
+    } else {
+      let wallUrls = postWall.get("imageUrl").split(",");
+
+      for (let index = 0; index < wallUrls.length; index++) {
+        const element = wallUrls[index];
+        const url = element.match(/\/static\/(.+)/)[1];
+        let filePath = path.join(__dirname, "../upload", "images", url);
+        fs.remove(filePath)
+          .then(() => {
+            console.log("文件已成功删除", url);
+          })
+          .catch((err) => {
+            console.error("删除文件时出错:", err);
+          });
+      }
+
+      await postWall.destroy({ useMasterKey: true });
     }
-
-    let wallUrls = postWall.get("imageUrl").split(",");
-
-    for (let index = 0; index < wallUrls.length; index++) {
-      const element = wallUrls[index];
-      const url = element.match(/\/static\/(.+)/)[1];
-      let filePath = path.join(__dirname, "../upload", "images", url);
-      fs.remove(filePath)
-        .then(() => {
-          console.log("文件已成功删除", url);
-        })
-        .catch((err) => {
-          console.error("删除文件时出错:", err);
-        });
-    }
-
-    await postWall.destroy({ useMasterKey: true });
   }
   await info.destroy({ useMasterKey: true });
   console.log(info.id, "已删除");
