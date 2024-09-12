@@ -97,7 +97,7 @@ const withPostfindDetail = async (singlePost, currentUsreId) => {
 };
 /**
  * 根据postId删除所有有关信息
- * @param {string|object} post - 帖子id
+ * @param {String|Object} post - 帖子id
  */
 const delPostInfo = async (post) => {
   let info;
@@ -143,13 +143,13 @@ const delPostInfo = async (post) => {
         const element = wallUrls[index];
         const url = element.match(/\/static\/(.+)/)[1];
         let filePath = path.join(__dirname, "../upload", "images", url);
-        fs.remove(filePath)
-          .then(() => {
-            console.log("文件已成功删除", url);
-          })
-          .catch((err) => {
-            console.error("删除文件时出错:", err);
-          });
+        // fs.remove(filePath)
+        //   .then(() => {
+        //     console.log("文件已成功删除", url);
+        //   })
+        //   .catch((err) => {
+        //     console.error("删除文件时出错:", err);
+        //   });
       }
 
       await postWall.destroy({ useMasterKey: true });
@@ -159,9 +159,48 @@ const delPostInfo = async (post) => {
   console.log(info.id, "已删除");
 };
 
+/**
+ * 比较两个字符串的相似度
+ * @param {String} str1 - str1
+ * @param {String?} str2 - str2
+ * @returns {Number} - 相似度
+ */
+const calculateSimilarity = (str1, str2) => {
+  const len1 = str1.length;
+  const len2 = str2.length;
+
+  const dp = Array(len1 + 1)
+    .fill(null)
+    .map(() => Array(len2 + 1).fill(null));
+
+  for (let i = 0; i <= len1; i += 1) {
+    dp[i][0] = i;
+  }
+  for (let j = 0; j <= len2; j += 1) {
+    dp[0][j] = j;
+  }
+
+  for (let i = 1; i <= len1; i += 1) {
+    for (let j = 1; j <= len2; j += 1) {
+      const indicator = str1[i - 1] === str2[j - 1] ? 0 : 1;
+      dp[i][j] = Math.min(
+        dp[i - 1][j] + 1, // 删除
+        dp[i][j - 1] + 1, // 插入
+        dp[i - 1][j - 1] + indicator // 替换
+      );
+    }
+  }
+
+  const distance = dp[len1][len2];
+  const similarity = 1 - distance / Math.max(len1, len2); // 计算相似度，范围为 0 到 1
+
+  return similarity;
+};
+
 module.exports = {
   getRandomIntInRange,
   getPostAdditionalValue,
   withPostfindDetail,
   delPostInfo,
+  calculateSimilarity,
 };

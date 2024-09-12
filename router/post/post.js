@@ -127,10 +127,11 @@ Router.delete(
     try {
       const postQuery = new Parse.Query(Post);
       const singlePost = await postQuery.get(req.body.id);
+      console.log(req.user.id);
 
       if (
         singlePost.get("creator") !== req.user.id &&
-        req.user.id != "jLEADQV7nL" // juyiyang@qq.com
+        !["H35NQKmY1l", "jLEADQV7nL"].includes(req.user.id) // juyiyang@qq.com vw50kfc
       ) {
         return res.customErrorSend("暂无权限");
       }
@@ -214,6 +215,8 @@ Router.get(
     })
   ),
   async (req, res) => {
+    console.log("detail", req.query);
+
     try {
       const postQuery = new Parse.Query(Post);
       const singlePost = await postQuery.get(req.query.id);
@@ -250,28 +253,40 @@ Router.get("/myPost", async (req, res) => {
   }
 });
 
+// 关键字查询
 Router.get(
   "/keyWord",
   validateParams(
     Joi.object({
       keyWord: Joi.string().required(),
-      pageSize: Joi.number().max(20),
-      page: Joi.number(),
     }).unknown()
   ),
   async (req, res) => {
     try {
       // 计算跳过的记录数和限制返回的记录数
-      const { page = 1, pageSize = 10 } = req.query;
+      let { page = 1, pageSize = 10 } = req.query;
       // 计算需要跳过的数据量
       const skip = (page - 1) * pageSize;
+      if (pageSize > 20) pageSize = 20;
       let keyWord = req.query.keyWord;
 
+      const postSearchHistory = Parse.Object.extend("PostSearchHistory");
+      const PostSearchHistory = new postSearchHistory();
+
+      PostSearchHistory.set("keyWord", keyWord);
+      PostSearchHistory.set("creatorId", req.user?.id || "/");
+
+      PostSearchHistory.save(null, { useMasterKey: true }).catch((err) => {
+        console.log(err, "PostSearchHistory");
+      });
       const characters = keyWord.split("");
 
       characters.push(keyWord);
 
-      const regexPattern = characters.join("|");
+      // 拆分字符串去匹配
+      // const regexPattern = characters.join("|");
+      // 匹配是否包含
+      const regexPattern = `.*${keyWord}.*`;
       const postContentQuery = new Parse.Query("PostContent");
 
       const pageView = Parse.Object.extend("PostBrowseHistory");
@@ -286,8 +301,8 @@ Router.get(
       postContentQuery.skip(skip);
       postContentQuery.limit(parseInt(pageSize));
       // postContentQuery.matches("content", keyWord);
+
       postContentQuery.matches("content", regexPattern);
-      const total = await postContentQuery.count({ useMasterKey: true });
       const record = await postContentQuery.find({ useMasterKey: true });
       let recordLength = record.length;
       let result = [];
@@ -298,8 +313,20 @@ Router.get(
 
           continue;
         }
+
         const postQuery = new Parse.Query(Post);
-        const singlePost = await postQuery.get(record[i].get("belongId"));
+        postQuery.equalTo("objectId", record[i].get("belongId"));
+        const singlePost = await postQuery.first({ useMasterKey: true });
+        if (!singlePost) {
+          console.log(
+            record[i].get("belongId"),
+            record[i].id,
+            "归属文章已不存在"
+          );
+          await record[i].destroy({ useMasterKey: true });
+          continue;
+        }
+
         result.push(await withPostfindDetail(singlePost, req.user.id));
       }
       res.customSend({

@@ -24,6 +24,9 @@ const Wall = require("./wall/index");
 const Reptile = require("./reptile_duitang");
 // const Collect = require("./wall/collect");
 const VerifyEmail = require("./verifyEmail");
+const Hot = require("./search/hot");
+
+const Version = require("./version");
 
 const Router = express.Router();
 
@@ -49,9 +52,11 @@ Router.use("/parse", api.app);
 
 Router.use("/account", Login);
 Router.use("/wall", Wall);
+Router.use("/version", Version);
 Router.use("/reptile", Reptile);
 Router.use("/verify", VerifyEmail);
 
+Router.use("/hot", Hot);
 Router.use("/account", authenticateMiddleware, Account);
 Router.use("/role", authenticateMiddleware, Role);
 Router.use("/post", authenticateMiddleware, Post);

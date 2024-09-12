@@ -285,9 +285,22 @@ Router.post("/redBook", async (req, res) => {
     const dtQuery = new Parse.Query(RedBookPost);
 
     dtQuery.equalTo("source_id", item["id"] || item["note_id"]);
-    let history = await dtQuery.find({ useMasterKey: true });
-    if (history.length) {
-      console.log("jump 重复", history[0].id);
+    let history = await dtQuery.first({ useMasterKey: true });
+    if (history) {
+      if (history.get("postId")) {
+        continue;
+      }
+      for (let key in item) {
+        if (key == "id") {
+          history.set("source_id", item[key]);
+          continue;
+        }
+
+        history.set(key, item[key]);
+      }
+      await history.save(null, { useMasterKey: true });
+      console.log("已覆盖", history.id);
+
       continue;
     }
     let redBookPost = new RedBookPost();
@@ -407,7 +420,9 @@ async function generateAccount() {
     };
     try {
       const puser = new Parse.User();
-
+      if (query.username === "啦啦八八") {
+        console.log(query.source_id, "---------------------", item.id);
+      }
       puser.set("email", query.email);
       puser.set("username", query.email);
       puser.set("plainPassword", query.password);
@@ -448,7 +463,7 @@ async function generateAvatar() {
         console.log(i, imageUrl, item.toJSON());
       });
     if (!response || !response?.data) {
-      console.log("jump", i);
+      console.log("jump", i, item.id);
 
       continue;
     }
@@ -474,7 +489,7 @@ function getRandomISODateWithinLastYear() {
   const now = dayjs();
 
   // 一年前的日期
-  const oneYearAgo = dayjs().subtract(1, "year");
+  const oneYearAgo = dayjs().subtract(1, "month");
 
   // 计算时间差（毫秒）
   const timeDifference = now.valueOf() - oneYearAgo.valueOf();
@@ -500,8 +515,10 @@ async function generatePost() {
   console.log("共有推文：", postRecord.length);
   for (let i = 0; i < postRecord.length; i++) {
     let singlePost = postRecord[i];
-
-    if (!singlePost.get("note_card")?.cover && !singlePost.get("cover")) {
+    let cover = singlePost.get("note_card")?.cover || singlePost.get("cover");
+    let imgList =
+      singlePost.get("note_card")?.image_list || singlePost.get("image_list");
+    if (!cover && !imgList && !imgList.length) {
       console.log("数据缺失", singlePost.id);
       continue;
     }
@@ -511,14 +528,11 @@ async function generatePost() {
       // console.log("帖子类型为video:", i, singlePost.id);
       continue;
     }
-    let cover = singlePost.get("note_card")?.cover || singlePost.get("cover");
-    let imgList =
-      singlePost.get("note_card")?.image_list || singlePost.get("image_list");
     let user = singlePost.get("note_card")?.user || singlePost.get("user");
-    let url = cover.url_default;
     let display_title =
       singlePost.get("display_title") ||
-      singlePost.get("note_card").display_title;
+      singlePost.get("note_card")?.display_title ||
+      singlePost.get("note_card").title;
     let imageBuffers = [];
     try {
       if (imgList && imgList.length) {
@@ -545,6 +559,11 @@ async function generatePost() {
           imageBuffers.push(imageBuffer);
         }
       } else {
+        let url = cover?.url_default;
+        if (!url) {
+          console.log("数据缺失 cover imaglist", singlePost.id);
+          continue;
+        }
         const response = await axios({
           url,
           method: "GET",
@@ -594,6 +613,7 @@ async function generatePost() {
             .save(null, { useMasterKey: true })
             .then(() =>
               console.log(
+                i,
                 "保存成功",
                 postInfo.id,
                 imgList && imgList.length ? imgList.length : 1
@@ -608,10 +628,10 @@ async function generatePost() {
       if (String(err) === "AxiosError: Request failed with status code 403") {
         console.log("图片不能访问", singlePost.id);
 
-        singlePost.destroy({ useMasterKey: true });
+        // singlePost.destroy({ useMasterKey: true });
       } else if (String(err) === "Error: connect ECONNREFUSED ::1:80") {
         console.log("图片不能访问 content", singlePost.id);
-        singlePost.destroy({ useMasterKey: true });
+        // singlePost.destroy({ useMasterKey: true });
 
         return;
       } else {
@@ -638,17 +658,23 @@ async function generatePostLike() {
     const singlePost = await postQuery.first({ useMasterKey: true });
     if (!singlePost) {
       console.log(postId, "帖子不存在");
+      await item.destroy({ useMasterKey: true });
       continue;
     }
 
-    let likeCount = Number(
+    let likeCount =
       item.get("note_card")?.interact_info.liked_count ||
-        item.get("interact_info")?.liked_count
-    );
+      item.get("interact_info")?.liked_count;
+
+    if (String(likeCount).indexOf("万") != -1) {
+      let c = likeCount.split("万");
+      likeCount = c[0] * 10000;
+    }
+    likeCount = parseInt(likeCount);
     let maxWidth =
-      item.get("note_card")?.cover.width || item.get("cover")?.width;
+      item.get("note_card")?.cover?.width || item.get("cover")?.width || 0;
     let maxHeight =
-      item.get("note_card")?.cover.height || item.get("cover")?.height;
+      item.get("note_card")?.cover?.height || item.get("cover")?.height || 0;
     singlePost.set("likeCount", likeCount);
     singlePost.set("customCreatedAt", getRandomISODateWithinLastYear());
     singlePost.set("maxWidth", maxWidth);
@@ -660,7 +686,7 @@ async function generatePostLike() {
   }
   console.log("同步完毕:", redPosts.length);
 }
-
+// 删除已同步的video帖子Post
 async function excludeTypeVideoPost() {
   const redPostQuery = new Parse.Query("redBookPost");
   redPostQuery.limit(100000);
@@ -811,6 +837,7 @@ async function deleteTypeVideoPost() {
     .find()
     .then(async (results) => {
       console.log("成功获取数据:", results.length);
+      return;
       for (let index = 0; index < results.length; index++) {
         const element = results[index];
         await element.destroy({ useMasterKey: true });
@@ -835,12 +862,41 @@ async function downloadPostImg() {
     console.log("删除成功", i);
   }
 }
+
+async function existsAccountPost() {
+  const postQuery = new Parse.Query("Post");
+  postQuery.equalTo("creator", "cDH2qEKTsj");
+  postQuery.limit(1000000);
+  const posts = await postQuery.find({ useMasterKey: true });
+  console.log("开始");
+  let mutil = 0;
+  for (let index = 0; index < posts.length; index++) {
+    const element = posts[index];
+    if (element.get("wallId").split(",").length > 1) {
+      mutil++;
+      continue;
+    }
+    const redBookPostQuery = new Parse.Query("redBookPost");
+    redBookPostQuery.equalTo("postId", element.id);
+    const originPost = await redBookPostQuery.first({ useMasterKey: true });
+
+    if (originPost) {
+      await originPost.destroy({ useMasterKey: true });
+    }
+    await delPostInfo(element);
+  }
+  console.log(mutil);
+
+  console.log("结束");
+}
+
 // setTimeout(() => setBelongIdPost(), 1000);
 setTimeout(async () => {
-  // await generateAccount();
-  // await generateAvatar();
-  // await generatePost();
-  // await generatePostLike();
+  // existsAccountPost();
+  await generateAccount();
+  await generateAvatar();
+  await generatePost();
+  await generatePostLike();
   // await deleteNotContentPost();
   // await deleteTypeVideoPost();
 }, 1000);
