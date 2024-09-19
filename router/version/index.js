@@ -31,7 +31,7 @@ Router.get("/checkVersion", (req, res) => {
   //   return res.customErrorSend();
   // }
 
-  const currentVersion = "1.0.3";
+  const currentVersion = "1.0.12";
 
   res.customSend(v === currentVersion);
 });

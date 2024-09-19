@@ -40,6 +40,44 @@ Router.get("/info", async (req, res) => {
   }
 });
 
+// 查询用户信息
+Router.get("/keyword", async (req, res) => {
+  try {
+    let { page = 1, pageSize = 20, keyWord } = req.query;
+    // 计算需要跳过的数据量
+    const skip = (page - 1) * pageSize;
+    const regexPattern = `.*${keyWord}.*`;
+    const userQuery = new Parse.Query(Parse.User);
+    userQuery.matches("nickName", regexPattern);
+    userQuery.skip(skip);
+    userQuery.limit(parseInt(pageSize));
+    const users = await userQuery.find({ useMasterKey: true });
+
+    let l = users.length;
+    let records = [];
+    for (let i = 0; i < l; i++) {
+      let item = users[i];
+      const isFollowQuery = new Parse.Query("Following");
+      isFollowQuery.equalTo("creatorId", req.user.id);
+      isFollowQuery.equalTo("followId", item.id);
+      let isFollow = await isFollowQuery.first({ useMasterKey: true });
+
+      records.push({
+        avatar: item.get("avatar"),
+        id: item.id,
+        nickname: item.get("nickName"),
+        isFollow: !!isFollow,
+      });
+    }
+    res.customSend({
+      records,
+      nextPage: false,
+    });
+  } catch (error) {
+    res.customErrorSend(error.message, error.code);
+  }
+});
+
 // 修改用户信息
 Router.put("/info", async (req, res) => {
   try {
@@ -90,6 +128,7 @@ Router.put("/info", async (req, res) => {
     res.customErrorSend(error.message, error.code);
   }
 });
+
 // 头像
 Router.put(
   "/updateAvatar",

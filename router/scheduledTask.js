@@ -94,13 +94,15 @@ const updateUserInfo = async () => {
       const currentTime = new Date(current.get("createdAt"));
       if (currentTime > existingTime) {
         existing.time = current.get("createdAt");
-        existing.destroy({ useMasterKey: true });
+        existing.destroy({ useMasterKey: true }).catch();
       }
     } else {
       acc.push(current);
     }
     return acc;
   }, []);
+  console.log(`当前时间段共有${deduplicatedData.length}用户需同步信息`);
+
   for (let i = 0; i < deduplicatedData.length; i++) {
     let userId = deduplicatedData[i].get("userId");
 
@@ -155,5 +157,5 @@ const updateUserInfo = async () => {
 };
 // cron.schedule("*/10 * * * *", updateWeight);
 // cron.schedule("0 0 2 * * *", updateUserInfo);
-// setTimeout(updateUserInfo, 1200);
-setTimeout(updateWeight, 1200);
+setTimeout(updateUserInfo, 1200);
+// setTimeout(updateWeight, 1200);
