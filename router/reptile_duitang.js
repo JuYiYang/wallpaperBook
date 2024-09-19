@@ -327,10 +327,9 @@ Router.get("/redBook", async (req, res) => {
   const skip = (page - 1) * pageSize;
 
   const dtQuery = new Parse.Query(RedBookPost);
-
-  const total = await dtQuery.count({ useMasterKey: true });
   dtQuery.skip(skip);
 
+  dtQuery.descending("createdAt"); // 对 createdAt 字段倒序排序
   dtQuery.limit(parseInt(pageSize));
   const record = await dtQuery.find({ useMasterKey: true });
   let html = "";
@@ -338,12 +337,12 @@ Router.get("/redBook", async (req, res) => {
   record.forEach((item) => {
     let cover = item.get("note_card")?.cover || item.get("cover");
 
-    let url = cover.url_default;
+    let url = cover?.url_default;
     src += `${url};`;
-    html += ` <a href="${url}" target="_blank"><img src='${url}'/ style="width:200px;height:200px;object-fit: cover;"></a>`;
+    html += ` <a href="${url}"  target="_blank"><img alt='不不不不能访问' src='${url}'/ style="width:200px;height:200px;object-fit: cover;"></a>`;
   });
 
-  res.writeHead(200, { "Content-Type": "text/html" });
+  res.writeHead(200, { "Content-Type": "text/html;charset=utf8" });
   res.end(`<html> 
     <meta name="referrer" content="never">
     <div style="    display: flex;

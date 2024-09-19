@@ -167,6 +167,10 @@ Router.get(
     postQuery.skip(isLogin ? skip : skip > 20 ? 20 : skip);
     postQuery.limit(parseInt(pageSize));
     postQuery.descending("createdAt");
+
+    // const queryDate = new Date(Date.UTC(2024, 8, 13, 16, 40)); // Note: Months are 0-indexed (8 = September)
+
+    // postQuery.greaterThan("createdAt", queryDate);
     if (req.query.userId) {
       postQuery.equalTo("creator", req.query.userId);
     } else {
@@ -252,7 +256,35 @@ Router.get("/myPost", async (req, res) => {
     res.customErrorSend(error.message, error.code);
   }
 });
+Router.get("/followPost", async (req, res) => {
+  try {
+    const { page = 1, pageSize = 10 } = req.query;
+    const userId = req.query.id || req.user.id;
+    const skip = (page - 1) * pageSize;
 
+    const followingQuery = new Parse.Query("Following");
+    followingQuery.equalTo("creatorId", userId);
+    const follows = await followingQuery.findAll({ useMasterKey: true });
+
+    const postQuery = new Parse.Query(Post);
+    postQuery.limit(parseInt(pageSize));
+    postQuery.skip(skip);
+    postQuery.containedIn(
+      "creator",
+      follows.map((item) => item.get("followId"))
+    );
+    postQuery.descending("createdAt");
+    const postResult = await postQuery.find();
+    const total = await postQuery.count({ useMasterKey: true });
+    let records = [];
+    for (let i = 0; i < postResult.length; i++) {
+      records.push(await withPostfindDetail(postResult[i], req.user.id));
+    }
+    res.customSend({ records, nextPage: page * pageSize < total });
+  } catch (error) {
+    res.customErrorSend(error.message, error.code);
+  }
+});
 // 关键字查询
 Router.get(
   "/keyWord",
