@@ -62,6 +62,11 @@ const withPostfindDetail = async (singlePost, currentUsreId) => {
   followingQuery.equalTo("creatorId", currentUsreId);
   followingQuery.equalTo("followId", singlePost.get("creator"));
 
+  // 查询用户是否关注
+  // const recommendedQuery = new Parse.Query("Following");
+  // followingQuery.equalTo("creatorId", currentUsreId);
+  // followingQuery.equalTo("followId", singlePost.get("creator"));
+
   let follow = await followingQuery.first({ useMasterKey: true });
   let content = await contentQuery.first({ useMasterKey: true });
   let walls = await wallQuery.find({ useMasterKey: true });
@@ -79,11 +84,11 @@ const withPostfindDetail = async (singlePost, currentUsreId) => {
     id: singlePost.id,
     follow: !!follow,
     createdAt: singlePost.get("customCreatedAt") || singlePost.get("createdAt"),
-
     maxPostHeight: singlePost.get("maxPostHeight"),
     content: content?.get("content"),
     walls: userWalls,
     isLike: !!likes.length,
+    recommended: false,
     weight: singlePost.get("weight"),
     userInfo: {
       avatar: singlePost.get("creatorAvatar"),
@@ -91,7 +96,7 @@ const withPostfindDetail = async (singlePost, currentUsreId) => {
       id: singlePost.get("creator"),
     },
     likeCount: singlePost.get("likeCount") || 0,
-    colletCount: Math.floor(Math.random() * 50 + 1),
+    // colletCount: Math.floor(Math.random() * 50 + 1),
     commentCount: singlePost.get("commentCount") || 0,
   };
 };
@@ -131,9 +136,9 @@ const delPostInfo = async (post) => {
 
   if (wallId) {
     const postWallSql = new Parse.Query("PostWall");
-    postWallSql.equalTo("objectId", wallId);
-    let postWall = await postWallSql.first({ useMasterKey: true });
-    if (!postWall) {
+    postWallSql.containedIn("objectId", wallId.split(","));
+    let postWall = await postWallSql.findAll({ useMasterKey: true });
+    if (postWall?.length) {
       // throw new Error("图 不存在", wallId);
       console.log("图 不存在", wallId);
     } else {
