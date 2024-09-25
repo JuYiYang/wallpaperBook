@@ -30,7 +30,7 @@ const Version = require("./version");
 
 const Router = express.Router();
 
-Router.use(bodyParser.json());
+Router.use(bodyParser.json({ limit: "10mb" }));
 // 自定义中间件
 Router.use(responseMiddleware);
 Router.use(crossDomainMiddlewar);

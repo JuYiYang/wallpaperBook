@@ -14,6 +14,7 @@ const {
   getPostAdditionalValue,
   withPostfindDetail,
 } = require("../../utils/utils");
+const { useMasterKey } = require("parse-server/lib/cloud-code/Parse.Cloud");
 // 创建帖子
 Router.post("/creatdPost", multiple, async (req, res) => {
   if (
@@ -24,6 +25,7 @@ Router.post("/creatdPost", multiple, async (req, res) => {
   }
   try {
     let post = await createPost(req.files, req.user, req.body);
+
     res.customSend(await withPostfindDetail(post));
   } catch (err) {
     console.log(err);
@@ -89,6 +91,11 @@ const createPost = async (images, user, body) => {
 
   post.set("weight", getPostAdditionalValue(images.length, text?.length || 0)); // 初始权重
 
+  const acl = new Parse.ACL();
+  // 创建者可以编辑帖子
+  acl.setWriteAccess(user, true);
+  acl.setPublicReadAccess(true);
+  post.setACL(acl);
   let singlePost = await post.save(null, { useMasterKey: true });
 
   const wallQuery = new Parse.Query("PostWall");
@@ -111,7 +118,6 @@ const createPost = async (images, user, body) => {
       console.log("set content belongId", err);
     });
   }
-
   return singlePost;
 };
 
@@ -127,8 +133,6 @@ Router.delete(
     try {
       const postQuery = new Parse.Query(Post);
       const singlePost = await postQuery.get(req.body.id);
-      console.log(req.user.id);
-
       if (
         singlePost.get("creator") !== req.user.id &&
         !["H35NQKmY1l", "jLEADQV7nL"].includes(req.user.id) // juyiyang@qq.com vw50kfc
@@ -190,14 +194,14 @@ Router.get(
         pageViewRecord.map((item) => item.objectId)
       );
     }
-    const postResult = await postQuery.find({ useMasterKey: true }); // 按创建时间降序排序
+    const postResult = await postQuery.find(); // 按创建时间降序排序
 
     let postRecords = [];
     let postsLength = postResult.length;
     for (let i = 0; i < postsLength; i++) {
       postRecords.push(await withPostfindDetail(postResult[i], req.user?.id));
     }
-    const total = await postQuery.count({ useMasterKey: true });
+    const total = await postQuery.count();
 
     res.customSend({
       nextPage: page * pageSize < total,
@@ -224,7 +228,6 @@ Router.get(
     try {
       const postQuery = new Parse.Query(Post);
       const singlePost = await postQuery.get(req.query.id);
-
       res.customSend(await withPostfindDetail(singlePost, req.user.id));
     } catch (error) {
       res.customErrorSend(error);
@@ -256,6 +259,7 @@ Router.get("/myPost", async (req, res) => {
     res.customErrorSend(error.message, error.code);
   }
 });
+// 查询关注用户帖子
 Router.get("/followPost", async (req, res) => {
   try {
     const { page = 1, pageSize = 10 } = req.query;
@@ -330,37 +334,52 @@ Router.get(
         pageViewRecord.map((item) => item.get("postId"))
       );
 
-      postContentQuery.skip(skip);
-      postContentQuery.limit(parseInt(pageSize));
+      // postContentQuery.skip(skip);
+      // postContentQuery.limit(parseInt(pageSize));
       // postContentQuery.matches("content", keyWord);
 
       postContentQuery.matches("content", regexPattern);
-      const record = await postContentQuery.find({ useMasterKey: true });
+      const record = await postContentQuery.findAll({ useMasterKey: true });
       let recordLength = record.length;
       let result = [];
 
-      for (let i = 0; i < recordLength; i++) {
-        if (!record[i].get("belongId")) {
-          console.log("缺失belongId", record[i].id);
+      // for (let i = 0; i < recordLength; i++) {
+      // if (!record[i].get("belongId")) {
+      //   console.log("缺失belongId", record[i].id);
 
-          continue;
-        }
+      //   continue;
+      // }
 
-        const postQuery = new Parse.Query(Post);
-        postQuery.equalTo("objectId", record[i].get("belongId"));
-        const singlePost = await postQuery.first({ useMasterKey: true });
-        if (!singlePost) {
-          console.log(
-            record[i].get("belongId"),
-            record[i].id,
-            "归属文章已不存在"
-          );
-          await record[i].destroy({ useMasterKey: true });
-          continue;
-        }
+      // const postQuery = new Parse.Query(Post);
+      // postQuery.equalTo("objectId", record[i].get("belongId"));
+      //   const singlePost = await postQuery.first({ useMasterKey: true });
+      //   if (!singlePost) {
+      //     console.log(
+      //       record[i].get("belongId"),
+      //       record[i].id,
+      //       "归属文章已不存在"
+      //     );
+      //     await record[i].destroy({ useMasterKey: true });
+      //     continue;
+      //   }
 
-        result.push(await withPostfindDetail(singlePost, req.user.id));
+      //   result.push(await withPostfindDetail(singlePost, req.user.id));
+      // }
+      const postQuery = new Parse.Query(Post);
+      postQuery.containedIn(
+        "objectId",
+        record.map((item) => item.get("belongId"))
+      );
+      postQuery.skip(skip);
+      postQuery.limit(parseInt(pageSize));
+      postQuery.descending("createdAt");
+      postQuery.descending("weight");
+      const posts = await postQuery.find({ useMasterKey: true });
+      for (let index = 0; index < posts.length; index++) {
+        const element = posts[index];
+        result.push(await withPostfindDetail(element, req.user.id));
       }
+
       res.customSend({
         total: result.length,
         records: result,
@@ -371,6 +390,77 @@ Router.get(
       console.log(error);
 
       res.customErrorSend(error.message, error.code);
+    }
+  }
+);
+
+Router.get(
+  "/singleRole",
+  validateParams(
+    Joi.object({
+      id: Joi.string().required(),
+    }).unknown()
+  ),
+  async (req, res) => {
+    try {
+      const postQuery = new Parse.Query(Post);
+      const singlePost = await postQuery.get(req.query.id, {
+        useMasterKey: true,
+      });
+      const acl = singlePost.get("ACL");
+      console.log(acl);
+
+      res.customSend(acl["permissionsById"]["*"]?.read === true);
+    } catch (error) {
+      console.log(error);
+
+      res.customErrorSend(error);
+    }
+  }
+);
+// 设置权限
+Router.put(
+  "/accessRole",
+  validateParams(
+    Joi.object({
+      id: Joi.string().required(), // 确保 ID 是字符串
+      role: Joi.string().valid("public", "private").required(), // 确保角色有效
+    })
+  ),
+  async (req, res) => {
+    try {
+      const { id, role } = req.body;
+
+      // 查询单个 Post
+      const postQuery = new Parse.Query(Post);
+      postQuery.equalTo("objectId", id);
+      const singlePost = await postQuery.first({ useMasterKey: true });
+
+      // 检查 Post 是否存在
+      if (!singlePost) {
+        return res.status(404).customErrorSend("帖子未找到");
+      }
+
+      // 检查用户权限：确保当前用户是帖子的作者
+      if (singlePost.get("creator") !== req.user.id) {
+        return res.status(403).customErrorSend("没有权限修改该帖子");
+      }
+
+      // 设置 ACL
+      const acl = new Parse.ACL();
+      if (role === "public") {
+        acl.setPublicReadAccess(true);
+      } else if (role === "private") {
+        acl.setReadAccess(req.user, true);
+      }
+
+      singlePost.setACL(acl);
+      await singlePost.save(null, { useMasterKey: true }); // 不使用 useMasterKey，确保权限检查
+
+      res.status(200).customSend(singlePost.toJSON());
+    } catch (error) {
+      console.error("Error updating access role:", error);
+      res.status(500).customErrorSend("服务器内部错误", error.code);
     }
   }
 );

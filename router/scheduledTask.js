@@ -157,5 +157,39 @@ const updateUserInfo = async () => {
 };
 // cron.schedule("*/10 * * * *", updateWeight);
 // cron.schedule("0 0 2 * * *", updateUserInfo);
-setTimeout(updateUserInfo, 1200);
+// setTimeout(updateUserInfo, 1200);
 // setTimeout(updateWeight, 1200);
+// setTimeout(async () => {
+//   const postQuery = new Parse.Query("Post");
+//   postQuery.limit(20000000);
+//   const allPosts = await postQuery.find({ useMasterKey: true }); // 使用 MasterKey 查询所有帖子
+
+//   const updatedPosts = [];
+
+//   for (const post of allPosts) {
+//     const acl = new Parse.ACL();
+
+//     // 允许所有人读取
+//     acl.setPublicReadAccess(true);
+
+//     // 获取创建者 ID
+//     const creatorId = post.get("creator");
+
+//     if (creatorId) {
+//       // 查询创建者用户对象
+//       const creatorQuery = new Parse.Query(Parse.User);
+//       creatorQuery.equalTo("objectId", creatorId);
+
+//       const creator = await creatorQuery.first({ useMasterKey: true });
+
+//       if (creator) {
+//         acl.setWriteAccess(creator, true); // 允许创建者写入
+//       }
+//     }
+
+//     post.setACL(acl); // 设置 ACL
+//     updatedPosts.push(post); // 添加到更新列表
+//   }
+//   await Parse.Object.saveAll(updatedPosts, { useMasterKey: true });
+//   console.log("sess");
+// }, 2000);
