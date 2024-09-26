@@ -158,59 +158,65 @@ Router.get(
     }).unknown()
   ),
   async (req, res) => {
-    // 计算跳过的记录数和限制返回的记录数
-    const { page = 1, pageSize = 10 } = req.query;
+    try {
+      // 计算跳过的记录数和限制返回的记录数
+      const { page = 1, pageSize = 10 } = req.query;
 
-    const isLogin = !!req.user;
+      const isLogin = !!req.user;
 
-    // 计算需要跳过的数据量
-    const skip = (page - 1) * pageSize;
+      // 计算需要跳过的数据量
+      const skip = (page - 1) * pageSize;
 
-    const postQuery = new Parse.Query(Post);
+      const postQuery = new Parse.Query(Post);
 
-    postQuery.skip(isLogin ? skip : skip > 20 ? 20 : skip);
-    postQuery.limit(parseInt(pageSize));
-    postQuery.descending("createdAt");
+      postQuery.skip(isLogin ? skip : skip > 20 ? 20 : skip);
+      postQuery.limit(parseInt(pageSize));
+      postQuery.descending("createdAt");
 
-    // const queryDate = new Date(Date.UTC(2024, 8, 13, 16, 40)); // Note: Months are 0-indexed (8 = September)
+      // const queryDate = new Date(Date.UTC(2024, 8, 13, 16, 40)); // Note: Months are 0-indexed (8 = September)
 
-    // postQuery.greaterThan("createdAt", queryDate);
-    if (req.query.userId) {
-      postQuery.equalTo("creator", req.query.userId);
-    } else {
-      postQuery.descending("weight"); // 确保排序唯一
-      const pageView = Parse.Object.extend("PostBrowseHistory");
-      const pageViewQuery = new Parse.Query(pageView);
-      pageViewQuery.equalTo("creatorId", req.user?.id);
-      let pageViewRecord = await pageViewQuery.aggregate(
-        { $group: { _id: "$postId" } },
-        {
-          useMasterKey: true,
-        }
-      );
+      // postQuery.greaterThan("createdAt", queryDate);
+      if (req.query.userId) {
+        postQuery.equalTo("creator", req.query.userId);
+      } else {
+        postQuery.descending("weight"); // 确保排序唯一
+        const pageView = Parse.Object.extend("PostBrowseHistory");
+        const pageViewQuery = new Parse.Query(pageView);
+        pageViewQuery.equalTo("creatorId", req.user?.id);
+        let pageViewRecord = await pageViewQuery.aggregate(
+          { $group: { _id: "$postId" } },
+          {
+            useMasterKey: true,
+          }
+        );
 
-      postQuery.notContainedIn(
-        "objectId",
-        pageViewRecord.map((item) => item.objectId)
-      );
+        postQuery.notContainedIn(
+          "objectId",
+          pageViewRecord.map((item) => item.objectId)
+        );
+      }
+      const postResult = await postQuery.find(); // 按创建时间降序排序
+
+      let postRecords = [];
+      let postsLength = postResult.length;
+      for (let i = 0; i < postsLength; i++) {
+        postRecords.push(await withPostfindDetail(postResult[i], req.user?.id));
+      }
+      const total = await postQuery.count();
+
+      res.customSend({
+        nextPage: page * pageSize < total,
+        isLogin,
+        records: postRecords
+          .sort((a, b) => b.weight - a.weight)
+          .map(({ weight, ...rest }) => rest),
+        total,
+      });
+    } catch (err) {
+      console.log(err);
+
+      res.customErrorSend(error.message, error.code);
     }
-    const postResult = await postQuery.find(); // 按创建时间降序排序
-
-    let postRecords = [];
-    let postsLength = postResult.length;
-    for (let i = 0; i < postsLength; i++) {
-      postRecords.push(await withPostfindDetail(postResult[i], req.user?.id));
-    }
-    const total = await postQuery.count();
-
-    res.customSend({
-      nextPage: page * pageSize < total,
-      isLogin,
-      records: postRecords
-        .sort((a, b) => b.weight - a.weight)
-        .map(({ weight, ...rest }) => rest),
-      total,
-    });
   }
 );
 
@@ -408,8 +414,6 @@ Router.get(
         useMasterKey: true,
       });
       const acl = singlePost.get("ACL");
-      console.log(acl);
-
       res.customSend(acl["permissionsById"]["*"]?.read === true);
     } catch (error) {
       console.log(error);

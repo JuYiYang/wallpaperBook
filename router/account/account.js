@@ -237,13 +237,18 @@ Router.get("/getUserImpact", async (req, res) => {
     postQuery.equalTo("creator", userId);
     const postResult = await postQuery.find({ useMasterKey: true });
 
-    let likes = 0;
-    for (let i = 0; i < postResult.length; i++) {
-      let item = postResult[i];
-      const postLikeQuery = new Parse.Query("PostLike");
-      postLikeQuery.equalTo("postId", item.id);
-      likes += await postLikeQuery.count({ useMasterKey: true });
-    }
+    let likes = postResult.reduce(
+      (accumulator, currentValue) =>
+        (accumulator += currentValue.get("likeCount") || 0),
+      0
+    );
+    // 查询真实点赞数
+    // for (let i = 0; i < postResult.length; i++) {
+    // let item = postResult[i];
+    // const postLikeQuery = new Parse.Query("PostLike");
+    // postLikeQuery.equalTo("postId", item.id);
+    // likes += await postLikeQuery.count({ useMasterKey: true });
+    // }
     res.customSend({
       avatar: user.get("avatar"),
       motto: user.get("motto") || "",

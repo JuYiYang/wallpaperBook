@@ -21,6 +21,8 @@ const Follow = require("./account/follow");
 const Post = require("./post/index");
 const Wall = require("./wall/index");
 
+const Config = require("./appConfig/index");
+
 const Reptile = require("./reptile_duitang");
 // const Collect = require("./wall/collect");
 const VerifyEmail = require("./verifyEmail");
@@ -115,6 +117,8 @@ Router.use("/account", authenticateMiddleware, Account);
 Router.use("/role", authenticateMiddleware, Role);
 Router.use("/post", authenticateMiddleware, Post);
 Router.use("/follow", authenticateMiddleware, Follow);
+
+Router.use("/config", Config);
 
 Router.use("*", (req, res) => {
   // res.status(404).sendFile(path.join(__dirname, "public", "404.html"));
