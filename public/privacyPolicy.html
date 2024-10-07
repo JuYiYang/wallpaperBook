@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Privacy Policy</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f5f5f5;
+      color: #333;
+      margin: 0;
+      padding: 20px;
+    }
+
+    .container {
+      background-color: #ffffff;
+      border-radius: 8px;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+      padding: 20px;
+      max-width: 800px;
+      margin: 0 auto;
+    }
+
+    h1,
+    h2 {
+      color: #7728f5;
+    }
+
+    h2 {
+      margin-top: 40px;
+    }
+
+    p,
+    ul {
+      line-height: 1.6;
+    }
+
+    .language-toggle {
+      text-align: right;
+      margin-bottom: 20px;
+    }
+
+    .language-toggle button {
+      background-color: #7728f5;
+      color: #ffffff;
+      border: none;
+      padding: 10px;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+
+    .language-toggle button.active {
+      background-color: #5a1bcf;
+    }
+
+    .content {
+      display: none;
+    }
+
+    .content.active {
+      display: block;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="container">
+    <div class="language-toggle">
+      <button id="en-btn" class="active">English</button>
+      <button id="cn-btn">中文</button>
+    </div>
+
+    <!-- English Version -->
+    <div id="en-content" class="content active">
+      <h1>Privacy Policy</h1>
+      <p>Welcome to the privacy policy page. We value your privacy and are committed to protecting your personal data.
+      </p>
+
+      <h2>Permissions We Request</h2>
+      <ul>
+        <li><strong>Internet Access</strong> - We use this to connect to the internet and provide our services.</li>
+        <li><strong>Access Network State</strong> - This helps us understand your network connectivity.</li>
+        <li><strong>Access WiFi State</strong> - This allows us to check if you are connected to WiFi to improve app
+          performance.</li>
+        <li><strong>Read External Storage</strong> - We request access to read your media files to display wallpapers.
+        </li>
+        <li><strong>Write External Storage</strong> - This is necessary for saving wallpapers and other data.</li>
+        <li><strong>Vibration</strong> - We may use vibration feedback for certain actions in the app.</li>
+      </ul>
+
+      <h2>Data We Collect</h2>
+      <p>We do not collect any personal data without your consent. Data collected is strictly used to improve your
+        experience with the app.</p>
+
+      <h2>Third-Party Services</h2>
+      <p>We may use third-party services such as Google Ads (APPLICATION_ID: ca-app-pub-9104614363631051~7845007134)
+        which may collect user information to provide targeted advertisements.</p>
+
+      <h2>Contact Us</h2>
+      <p>If you have any questions or concerns regarding this privacy policy, please contact us at
+        support@wallpaperbook.com.</p>
+    </div>
+
+    <!-- Chinese Version -->
+    <div id="cn-content" class="content">
+      <h1>隐私政策</h1>
+      <p>欢迎来到隐私政策页面。我们重视您的隐私，并致力于保护您的个人数据。</p>
+
+      <h2>我们请求的权限</h2>
+      <ul>
+        <li><strong>互联网访问权限</strong> - 我们使用此权限连接到互联网并提供服务。</li>
+        <li><strong>访问网络状态</strong> - 此权限帮助我们了解您的网络连接情况。</li>
+        <li><strong>访问WiFi状态</strong> - 此权限允许我们检查您是否连接到WiFi，以提高应用性能。</li>
+        <li><strong>读取外部存储</strong> - 我们请求访问您的媒体文件，以显示壁纸。</li>
+        <li><strong>写入外部存储</strong> - 此权限用于保存壁纸和其他数据。</li>
+        <li><strong>震动权限</strong> - 我们可能会在某些操作中使用震动反馈。</li>
+      </ul>
+
+      <h2>我们收集的数据</h2>
+      <p>未经您的同意，我们不会收集任何个人数据。收集的数据仅用于改善您的应用体验。</p>
+
+      <h2>第三方服务</h2>
+      <p>我们可能会使用第三方服务（如Google Ads，应用ID：ca-app-pub-9104614363631051~7845007134），这些服务可能会收集用户信息以提供定向广告。</p>
+
+      <h2>联系我们</h2>
+      <p>如果您对本隐私政策有任何疑问或担忧，请通过support@wallpaperbook.com联系我们。</p>
+    </div>
+  </div>
+
+  <script>
+    const enBtn = document.getElementById('en-btn');
+    const cnBtn = document.getElementById('cn-btn');
+    const enContent = document.getElementById('en-content');
+    const cnContent = document.getElementById('cn-content');
+
+    enBtn.addEventListener('click', () => {
+      enBtn.classList.add('active');
+      cnBtn.classList.remove('active');
+      enContent.classList.add('active');
+      cnContent.classList.remove('active');
+    });
+
+    cnBtn.addEventListener('click', () => {
+      cnBtn.classList.add('active');
+      enBtn.classList.remove('active');
+      cnContent.classList.add('active');
+      enContent.classList.remove('active');
+    });
+  </script>
+
+</body>
+
+</html>
