@@ -1,7 +1,7 @@
 const express = require("express");
 require("dotenv").config();
 require("./router/scheduledTask");
-
+require("./utils/cos");
 const app = express();
 
 const routes = require("./router/index");

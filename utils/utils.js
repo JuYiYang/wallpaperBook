@@ -1,4 +1,5 @@
 const fs = require("fs-extra");
+const { getTtemporaryImgLink } = require("./cos");
 const path = require("path");
 /**
  * 生成一个在 min 和 max 之间的随机整数
@@ -76,7 +77,7 @@ const withPostfindDetail = async (singlePost, currentUsreId) => {
     userWalls.push({
       id: walls[j].id,
       createdAt: walls[j].get("createdAt"),
-      url: walls[j].get("imageUrl"),
+      url: getTtemporaryImgLink("images/" + walls[j].get("imageName")),
     });
   }
 

@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>删除用户数据 / Delete User Data</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f7f7f7;
+      color: #333;
+
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    .container {
+      min-width: 420px;
+      padding: 0 20px;
+    }
+
+    .container {
+      background-color: white;
+      border-radius: 8px;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+      padding: 20px;
+      width: 350px;
+      text-align: center;
+    }
+
+    h1 {
+      color: #7728f5;
+      font-size: 24px;
+      margin-bottom: 20px;
+    }
+
+    label {
+      display: block;
+      text-align: left;
+      margin: 10px 0;
+      color: #555;
+    }
+
+    .required {
+      color: red;
+    }
+
+    input[type="text"],
+    input[type="email"] {
+      width: 100%;
+      /* 调整左右边距 */
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 14px;
+      margin-bottom: 15px;
+    }
+
+    .code-container {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 15px;
+    }
+
+    .code-container input {
+      flex-grow: 1;
+      margin-bottom: 0px;
+    }
+
+    .code-container button {
+      background-color: #7728f5;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      width: 120px;
+      padding: 10px 10px;
+      font-size: 12px;
+      cursor: pointer;
+      margin-left: 10px;
+    }
+
+    .code-container button:disabled {
+      background-color: #ccc;
+      cursor: not-allowed;
+    }
+
+    .delete-options {
+      margin-bottom: 20px;
+    }
+
+    input[type="radio"] {
+      margin-right: 5px;
+    }
+
+    button[type="submit"] {
+      background-color: #ccc;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      padding: 10px 20px;
+      font-size: 16px;
+      cursor: not-allowed;
+      width: 100%;
+    }
+
+    button[type="submit"].active {
+      background-color: #7728f5;
+      cursor: pointer;
+    }
+
+    button[type="submit"].active:hover {
+      background-color: #5c20c4;
+    }
+
+    .language-toggle {
+      margin-top: 10px;
+      font-size: 14px;
+      color: #7728f5;
+      cursor: pointer;
+      text-decoration: underline;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="container">
+    <h1 id="title">删除用户数据</h1>
+    <form id="deleteForm">
+      <label for="email" id="label-email">用户邮箱<span class="required">*</span></label>
+      <input type="email" id="email" name="email" placeholder="请输入您的邮箱" required>
+
+      <label for="code" id="label-code">邮箱验证码<span class="required">*</span></label>
+      <div class="code-container">
+        <input type="text" id="code" name="code" placeholder="请输入验证码" required>
+        <button type="button" id="sendCodeBtn">发送验证码</button>
+      </div>
+
+      <label for="contact" id="label-contact">联系方式<span class="required">*</span></label>
+      <input type="text" id="contact" name="contact" placeholder="请输入联系方式（可为邮箱）" required>
+
+      <div class="delete-options">
+        <label id="label-delete-method">删除数据的方式：<span class="required">*</span></label>
+        <label><input type="radio" name="delete_method" value="永久删除" required> 永久删除</label>
+        <label><input type="radio" name="delete_method" value="软删除"> 软删除</label>
+      </div>
+
+      <button type="submit" id="submitBtn" disabled>提交请求</button>
+    </form>
+
+    <!-- 语言切换按钮 -->
+    <div class="language-toggle" id="toggle-language">Switch to English</div>
+  </div>
+
+  <script>
+    // 语言切换
+    const toggleButton = document.getElementById('toggle-language');
+    let isChinese = true;
+
+    toggleButton.addEventListener('click', () => {
+      if (isChinese) {
+        document.getElementById('title').textContent = 'Delete User Data';
+        document.getElementById('label-email').innerHTML = 'User Email<span class="required">*</span>';
+        document.getElementById('email').placeholder = 'Enter your email';
+        document.getElementById('label-code').innerHTML = 'Email Verification Code<span class="required">*</span>';
+        document.getElementById('code').placeholder = 'Enter verification code';
+        document.getElementById('label-contact').innerHTML = 'Contact Information<span class="required">*</span>';
+        document.getElementById('contact').placeholder = 'Enter your contact (can be email)';
+        document.getElementById('label-delete-method').innerHTML = 'Data Deletion Method:<span class="required">*</span>';
+        document.getElementById('submitBtn').textContent = 'Submit Request';
+        document.getElementById('sendCodeBtn').textContent = 'Send Code';
+        toggleButton.textContent = '切换到中文';
+        isChinese = false;
+      } else {
+        document.getElementById('sendCodeBtn').textContent = '发送验证码';
+        document.getElementById('title').textContent = '删除用户数据';
+        document.getElementById('label-email').innerHTML = '用户邮箱<span class="required">*</span>';
+        document.getElementById('email').placeholder = '请输入您的邮箱';
+        document.getElementById('label-code').innerHTML = '邮箱验证码<span class="required">*</span>';
+        document.getElementById('code').placeholder = '请输入验证码';
+        document.getElementById('label-contact').innerHTML = '联系方式<span class="required">*</span>';
+        document.getElementById('contact').placeholder = '请输入联系方式（可为邮箱）';
+        document.getElementById('label-delete-method').innerHTML = '删除数据的方式：<span class="required">*</span>';
+        document.getElementById('submitBtn').textContent = '提交请求';
+        toggleButton.textContent = 'Switch to English';
+        isChinese = true;
+      }
+    });
+
+    // 发送验证码倒计时
+    const sendCodeBtn = document.getElementById('sendCodeBtn');
+    let timer;
+    sendCodeBtn.addEventListener('click', () => {
+      sendCodeBtn.disabled = true;
+      let timeLeft = 60;
+      sendCodeBtn.textContent = `${timeLeft}s`;
+
+      timer = setInterval(() => {
+        timeLeft--;
+        sendCodeBtn.textContent = `${timeLeft}s`;
+        if (timeLeft <= 0) {
+          clearInterval(timer);
+          sendCodeBtn.disabled = false;
+          sendCodeBtn.textContent = isChinese ? '发送验证码' : 'Send Code';
+        }
+      }, 1000);
+    });
+
+    // 表单验证
+    const form = document.getElementById('deleteForm');
+    const submitBtn = document.getElementById('submitBtn');
+    const inputs = form.querySelectorAll('input[required]');
+
+    // 检查所有必填项是否已填写
+    function checkFormValidity() {
+      let allValid = true;
+      inputs.forEach(input => {
+        if (!input.value.trim()) {
+          allValid = false;
+        }
+      });
+
+      if (allValid) {
+        submitBtn.classList.add('active');
+        submitBtn.disabled = false;
+      } else {
+        submitBtn.classList.remove('active');
+        submitBtn.disabled = true;
+      }
+    }
+
+    inputs.forEach(input => {
+      input.addEventListener('input', checkFormValidity);
+    });
+  </script>
+
+</body>
+
+</html>

@@ -69,9 +69,12 @@ Router.use("/config", Config);
 Router.use("/privacyPolicy", (req, res) => {
   res.sendFile(path.join(__dirname, "../public", "privacyPolicy.html"));
 });
+Router.use("/deletingAccount", (req, res) => {
+  res.sendFile(path.join(__dirname, "../public", "deletingAccount.html"));
+});
 Router.use("*", (req, res) => {
-  // res.status(404).sendFile(path.join(__dirname, "../public", "404.html"));
-  res.status(404).send(req.baseUrl);
+  res.status(200).sendFile(path.join(__dirname, "../public", "404.html"));
+  // res.status(404).send(req.baseUrl);
 });
 
 module.exports = Router;

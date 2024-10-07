@@ -3,6 +3,7 @@ const axios = require("axios");
 const crypto = require("crypto");
 const FormData = require("form-data");
 const fs = require("fs-extra");
+const url = require("url");
 const dayjs = require("dayjs");
 const path = require("path");
 const Router = express.Router();
@@ -899,7 +900,25 @@ setTimeout(async () => {
   // await deleteNotContentPost();
   // await deleteTypeVideoPost();
 }, 1000);
-// setTimeout(() => generatePostLike(), 1000);
+// setTimeout(async () => {
+//   const redBookPostSql = new Parse.Query("PostWall");
+//   const record = await redBookPostSql.findAll({ useMasterKey: true });
+//   for (let index = 0; index < record.length; index++) {
+//     const element = record[index];
+//     console.log(index, element.id);
+//     if (!element.get("imageUrl")) {
+//       console.log("删除", element.id);
+
+//       await element.destroy({ useMasterKey: true });
+//       continue;
+//     }
+//     let q = url.parse(element.get("imageUrl"), true);
+//     if (!q.host) continue;
+//     element.set("imageUrl", q.pathname.split("/static/")[1]);
+//     await element.save(null, { useMasterKey: true });
+//   }
+//   console.log("完成");
+// }, 100);
 // setTimeout(() => excludeTypeVideoPost(), 1000);
 
 module.exports = Router;
