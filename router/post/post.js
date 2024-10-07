@@ -195,7 +195,7 @@ Router.get(
           pageViewRecord.map((item) => item.objectId)
         );
       }
-      const postResult = await postQuery.find(); // 按创建时间降序排序
+      const postResult = await postQuery.find({ useMasterKey: true }); // 按创建时间降序排序
 
       let postRecords = [];
       let postsLength = postResult.length;
@@ -212,9 +212,7 @@ Router.get(
           .map(({ weight, ...rest }) => rest),
         total,
       });
-    } catch (err) {
-      console.log(err);
-
+    } catch (error) {
       res.customErrorSend(error.message, error.code);
     }
   }
