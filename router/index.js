@@ -73,7 +73,7 @@ Router.use("/deletingAccount", (req, res) => {
   res.sendFile(path.join(__dirname, "../public", "deletingAccount.html"));
 });
 Router.use("/keepAlive", (req, res) => {
-  res.status(200).send(" ");
+  res.status(200).send("123");
 });
 Router.use("*", (req, res) => {
   // res.status(200).sendFile(path.join(__dirname, "../public", "404.html"));

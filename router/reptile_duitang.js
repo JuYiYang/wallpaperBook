@@ -891,15 +891,15 @@ async function existsAccountPost() {
 }
 
 // setTimeout(() => setBelongIdPost(), 1000);
-setTimeout(async () => {
-  // existsAccountPost();
-  // await generateAccount();
-  // await generateAvatar();
-  // await generatePost();
-  // await generatePostLike();
-  // await deleteNotContentPost();
-  // await deleteTypeVideoPost();
-}, 1000);
+// setTimeout(async () => {
+// existsAccountPost();
+// await generateAccount();
+// await generateAvatar();
+// await generatePost();
+// await generatePostLike();
+// await deleteNotContentPost();
+// await deleteTypeVideoPost();
+// }, 1000);
 // setTimeout(async () => {
 //   const redBookPostSql = new Parse.Query("PostWall");
 //   const record = await redBookPostSql.findAll({ useMasterKey: true });
