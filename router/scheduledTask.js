@@ -157,5 +157,16 @@ const updateUserInfo = async () => {
 };
 // cron.schedule("*/10 * * * *", updateWeight);
 // cron.schedule("0 0 2 * * *", updateUserInfo);
+cron.schedule("* * * * *", () => {
+  axios
+    .get("https://server-k3dw.onrender.com/keepAlive")
+    .then((res) => {
+      console.log("keepAlive Success");
+    })
+    .catch((err) => {
+      console.log("keepAlive Error");
+    });
+});
+
 // setTimeout(updateUserInfo, 1200);
 // setTimeout(updateWeight, 1200);

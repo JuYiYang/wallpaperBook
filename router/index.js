@@ -72,6 +72,9 @@ Router.use("/privacyPolicy", (req, res) => {
 Router.use("/deletingAccount", (req, res) => {
   res.sendFile(path.join(__dirname, "../public", "deletingAccount.html"));
 });
+Router.use("/keepAlive", (req, res) => {
+  res.status(200).send(" ");
+});
 Router.use("*", (req, res) => {
   res.status(200).sendFile(path.join(__dirname, "../public", "404.html"));
   // res.status(404).send(req.baseUrl);
