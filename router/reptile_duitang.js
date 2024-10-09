@@ -36,6 +36,7 @@ let timer;
 const Wall = Parse.Object.extend("Wall");
 const uploadDir = path.join(__dirname, "../upload", "network");
 const { delPostInfo } = require("../utils/utils");
+const { useMasterKey } = require("parse-server/lib/cloud-code/Parse.Cloud");
 const reqDuiTangData = async (query, sendEvent, current) => {
   const ReptileRecord = Parse.Object.extend("ReptileRecord");
   const reptileRecord = new ReptileRecord();
@@ -891,34 +892,71 @@ async function existsAccountPost() {
 }
 
 // setTimeout(() => setBelongIdPost(), 1000);
-// setTimeout(async () => {
-// existsAccountPost();
-// await generateAccount();
-// await generateAvatar();
-// await generatePost();
-// await generatePostLike();
-// await deleteNotContentPost();
-// await deleteTypeVideoPost();
-// }, 1000);
-// setTimeout(async () => {
-//   const redBookPostSql = new Parse.Query("PostWall");
-//   const record = await redBookPostSql.findAll({ useMasterKey: true });
-//   for (let index = 0; index < record.length; index++) {
-//     const element = record[index];
-//     console.log(index, element.id);
-//     if (!element.get("imageUrl")) {
-//       console.log("删除", element.id);
-
-//       await element.destroy({ useMasterKey: true });
-//       continue;
-//     }
-//     let q = url.parse(element.get("imageUrl"), true);
-//     if (!q.host) continue;
-//     element.set("imageUrl", q.pathname.split("/static/")[1]);
-//     await element.save(null, { useMasterKey: true });
-//   }
-//   console.log("完成");
-// }, 100);
+setTimeout(async () => {
+  // existsAccountPost();
+  // await generateAccount();
+  // await generateAvatar();
+  // await generatePost();
+  // await generatePostLike();
+  // await deleteNotContentPost();
+  // await deleteTypeVideoPost();
+  // const wallQuery = new Parse.Query("Wall");
+  // // wallQuery.limit(1);
+  // const walls = await wallQuery.findAll({ useMasterKey: true });
+  // for (let index = 0; index < walls.length; index++) {
+  //   const element = walls[index];
+  //   if (element.get("creator") && element.get("creator").length) continue;
+  //   let sourceId = element.get("sourceId");
+  //   const duiTangDataQuery = new Parse.Query("DuiTangData");
+  //   duiTangDataQuery.equalTo("_id", sourceId);
+  //   const sourceData = await duiTangDataQuery.first({ useMasterKey: true });
+  //   if (!sourceData) {
+  //     console.log("缺失s数据", element.id);
+  //     continue;
+  //   }
+  //   const sender = sourceData.get("sender");
+  //   if (!sender) {
+  //     console.log("缺失sender", sourceData.id);
+  //     continue;
+  //   }
+  //   const User = Parse.Object.extend("_User");
+  //   const userSql = new Parse.Query(User);
+  //   userSql.equalTo("otherId", String(sender.id));
+  //   const results = await userSql.first({ useMasterKey: true });
+  //   if (!results) {
+  //     let password = generatePassword();
+  //     let email = generateRandomEmail();
+  //     let query = {
+  //       email,
+  //       password,
+  //       avatar: sender.avatar,
+  //       source_id: sender.id,
+  //       username: sender.username,
+  //     };
+  //     const puser = new Parse.User();
+  //     puser.set("email", query.email);
+  //     puser.set("username", query.email);
+  //     puser.set("plainPassword", query.password);
+  //     puser.set("password", query.password);
+  //     puser.set("avatar", query.avatar);
+  //     puser.set("nickName", query.username);
+  //     puser.set("downloadFrequency", 0);
+  //     puser.set("otherId", String(query.source_id));
+  //     puser.set("source", "duitang");
+  //     const saveBefore = await puser.signUp(null, { useMasterKey: true });
+  //     element.set("username", query.username);
+  //     element.set("avatar", query.avatar);
+  //     element.set("creator", saveBefore.id);
+  //     await element.save(null, { useMasterKey: true });
+  //   } else {
+  //     element.set("username", results.get("nickname"));
+  //     element.set("avatar", results.get("avatar"));
+  //     element.set("creator", results.id);
+  //     await element.save(null, { useMasterKey: true });
+  //   }
+  //   console.log(index);
+  // }
+}, 1000);
 // setTimeout(() => excludeTypeVideoPost(), 1000);
 
 module.exports = Router;

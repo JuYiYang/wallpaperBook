@@ -14,9 +14,8 @@ const {
   getPostAdditionalValue,
   withPostfindDetail,
 } = require("../../utils/utils");
-const { useMasterKey } = require("parse-server/lib/cloud-code/Parse.Cloud");
-// 创建帖子
-Router.post("/creatdPost", multiple, async (req, res) => {
+// 本地File创建帖子
+Router.post("/byCreatdPost", multiple, async (req, res) => {
   if (
     (!req.files || !req.files.length) &&
     (!req.body.content || !req.body.content.length)
@@ -120,7 +119,81 @@ const createPost = async (images, user, body) => {
   }
   return singlePost;
 };
+Router.post("/creatdPost", async (req, res) => {
+  const prefix = "https://tokyo-1307889358.cos.ap-tokyo.myqcloud.com/images/";
+  if (
+    (!req.body.content || !req.body.content.length) &&
+    (!req.body.walls || !req.body.walls.length)
+  ) {
+    return res.customErrorSend("缺少必要参数！");
+  }
 
+  const user = req.user;
+  try {
+    const post = new Post();
+    const text = req.body.content;
+
+    let imageIds = [];
+    if (req.body.walls && req.body.walls.length) {
+      for (let index = 0; index < req.body.walls.length; index++) {
+        const element = req.body.walls[index];
+        const wallInfo = new PostWall();
+
+        wallInfo.set("imageName", element.hash + "." + element.suffix);
+        wallInfo.set("imageUrl", prefix + element.hash + "." + element.suffix);
+        wallInfo.set("imageSize", element.size);
+        wallInfo.set("imageDimensions", `${element.width}x${element.height}`);
+        wallInfo.set("mimetype", element.mimetype); // 图片类型
+        wallInfo.set("type", 1); // 图片展示类型（壁纸，表情包，头像） 保留
+        wallInfo.set("creator", user.id);
+        const saveImageInfo = await wallInfo.save(null, { useMasterKey: true });
+        imageIds.push(saveImageInfo.id);
+      }
+    }
+
+    if (text && text.length) {
+      const postContentInfo = new PostContentInfo();
+      postContentInfo.set("content", text);
+      postContentInfo.set("creator", user.id);
+      const contentInfo = await postContentInfo.save(null, {
+        useMasterKey: true,
+      });
+      post.set("contentId", contentInfo.id);
+    }
+
+    post.set("wallId", imageIds.join(","));
+    post.set(
+      "maxPostHeight",
+      Math.max.apply(
+        Math,
+        req.body.walls.map((e) => e.height)
+      ) + ""
+    );
+    post.set("creator", user.id);
+    post.set("likeCount", 0);
+    post.set("commentCount", 0);
+    post.set("creatorAvatar", user.get("avatar"));
+    post.set("creatorName", user.get("nickName"));
+
+    post.set(
+      "weight",
+      getPostAdditionalValue(req.body.walls.length, text?.length || 0)
+    ); // 初始权重
+
+    const acl = new Parse.ACL();
+    // 创建者可以编辑帖子
+    acl.setWriteAccess(user, true);
+    acl.setPublicReadAccess(true);
+    post.setACL(acl);
+    let singlePost = await post.save(null, { useMasterKey: true });
+    console.log(singlePost.id);
+
+    res.customSend(await withPostfindDetail(singlePost));
+  } catch (err) {
+    console.log(err);
+    res.customErrorSend(err);
+  }
+});
 // 删除帖子
 Router.delete(
   "/del",

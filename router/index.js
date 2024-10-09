@@ -25,7 +25,7 @@ const Config = require("./appConfig/index");
 
 const Reptile = require("./reptile_duitang");
 // const Collect = require("./wall/collect");
-const VerifyEmail = require("./verifyEmail");
+const Verify = require("./verify");
 const Hot = require("./search/hot");
 
 const Version = require("./version");
@@ -57,7 +57,7 @@ Router.use("/account", Login);
 Router.use("/wall", Wall);
 Router.use("/version", Version);
 Router.use("/reptile", Reptile);
-Router.use("/verify", VerifyEmail);
+Router.use("/verify", Verify);
 
 Router.use("/hot", Hot);
 Router.use("/account", authenticateMiddleware, Account);
