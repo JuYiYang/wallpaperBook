@@ -1,6 +1,7 @@
 const express = require("express");
 const Joi = require("joi");
 const { validateParams } = require("../../utils/middlewares");
+const { withPostfindDetail } = require("../../utils/utils");
 
 const Router = express.Router();
 
@@ -68,6 +69,7 @@ Router.get("/getMyLikePost", async (req, res) => {
     query.descending("createdAt");
     const record = await query.find({ useMasterKey: true });
     const total = await query.count({ useMasterKey: true });
+    console.log(record);
 
     let records = [];
     for (let i = 0; i < record.length; i++) {
@@ -89,40 +91,7 @@ Router.get("/getMyLikePost", async (req, res) => {
         }
         continue;
       }
-      // 图
-      const wallQuery = new Parse.Query("PostWall");
-      wallQuery.containedIn(
-        "objectId",
-        (!!item.get("wallId") ? item.get("wallId") : "").split(",")
-      );
-      // 文
-      const contentQuery = new Parse.Query("PostContent");
-      contentQuery.equalTo("objectId", item.get("contentId"));
-
-      let content = await contentQuery.first({ useMasterKey: true });
-      let walls = await wallQuery.find({ useMasterKey: true });
-
-      records.push({
-        id: item.id,
-        userInfo: postInfo
-          ? {
-              avatar: postInfo.get("creatorAvatar"),
-              username: postInfo.get("creatorName"),
-              id: postInfo.get("creator"),
-            }
-          : null,
-        maxPostHeight: postInfo.get("maxPostHeight"),
-        createdAt: item.get("createdAt"),
-        postId: item.get("postId"),
-        content: content?.get("content") || "",
-        walls: walls.map((wall) => {
-          return {
-            id: wall.id,
-            createdAt: wall.get("createdAt"),
-            url: wall.get("imageUrl"),
-          };
-        }),
-      });
+      records.push(await withPostfindDetail(postInfo, req.user.id));
     }
 
     res.customSend({
