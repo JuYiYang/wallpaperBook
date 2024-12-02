@@ -46,7 +46,7 @@ Router.use(
   "/avatar",
   express.static(path.join(__dirname, "../upload", "avatar"))
 );
-
+config.databaseURI = process.env.DATABASEURL;
 const api = new ParseServer(config);
 (async () => await api.start())();
 
