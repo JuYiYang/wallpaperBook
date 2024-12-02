@@ -1,6 +1,7 @@
 const express = require("express");
 const Joi = require("joi");
 const { validateParams } = require("../../utils/middlewares");
+const { getLocalImgLink } = require("../../utils/cos");
 
 const Router = express.Router();
 
@@ -248,7 +249,7 @@ Router.get(
         records.push({
           id: item.id,
           userLike: !!likeRecord.length,
-          avatar: item.get("avatar"),
+          avatar: getLocalImgLink(item.get("avatar"), "avatar"),
           username: item.get("username"),
           comment: item.get("comment"),
           replyChildren: [],
@@ -307,7 +308,7 @@ Router.get(
       records.push({
         id: item.id,
         userLike: !!likeRecord.length,
-        avatar: item.get("avatar"),
+        avatar: getLocalImgLink(item.get("avatar"), "avatar"),
         parentId: item.get("parentId"),
         postId: item.get("postId"),
         username: item.get("username"),

@@ -37,6 +37,7 @@ const Wall = Parse.Object.extend("Wall");
 const uploadDir = path.join(__dirname, "../upload", "network");
 const { delPostInfo } = require("../utils/utils");
 const { useMasterKey } = require("parse-server/lib/cloud-code/Parse.Cloud");
+const { query } = require("express");
 const reqDuiTangData = async (query, sendEvent, current) => {
   const ReptileRecord = Parse.Object.extend("ReptileRecord");
   const reptileRecord = new ReptileRecord();
@@ -353,6 +354,7 @@ Router.get("/redBook", async (req, res) => {
   ${html}</div>
     </html>`);
 });
+
 function generateRandomEmail() {
   const domains = [
     "gmail.com",
@@ -442,6 +444,7 @@ async function generateAccount() {
   }
   console.log("全部保存完毕！");
 }
+
 async function generateAvatar() {
   const { fileTypeFromBuffer } = await import("file-type");
   const User = Parse.Object.extend("_User");
@@ -454,7 +457,8 @@ async function generateAvatar() {
   for (let i = 0; i < results.length; i++) {
     let item = results[i];
     let imageUrl = item.get("avatar");
-    if (imageUrl.includes("192.168.31.88:1337")) {
+    // !imageUrl.includes("sns-avatar-qc.xhscdn.com")
+    if (imageUrl.split("/").length <= 1) {
       // console.log("已经是本地头像");
       continue;
     }
@@ -480,11 +484,12 @@ async function generateAvatar() {
       await fs.writeFile(filePath, fileBuffer);
     }
 
-    item.set("avatar", `${process.env.DOMAINNAME}/avatar/${fileName}`);
+    item.set("avatar", `${fileName}`);
     await item.save(null, { useMasterKey: true });
   }
   console.log("保存完毕");
 }
+
 function getRandomISODateWithinLastYear() {
   // 当前日期
   const now = dayjs();
@@ -506,6 +511,7 @@ function getRandomISODateWithinLastYear() {
   // 返回 YYYY-MM-DD HH:mm:ss 格式的日期字符串
   return randomDate.format("YYYY-MM-DD HH:mm:ss");
 }
+
 async function generatePost() {
   const RedBookPost = Parse.Object.extend("redBookPost");
   const redBookPostSql = new Parse.Query(RedBookPost);
@@ -514,7 +520,7 @@ async function generatePost() {
   redBookPostSql.doesNotExist("postId");
   const postRecord = await redBookPostSql.find({ useMasterKey: true });
   console.log("共有推文：", postRecord.length);
-  for (let i = 0; i < postRecord.length; i++) {
+  for (let i = 2013; i < postRecord.length; i++) {
     let singlePost = postRecord[i];
     let cover = singlePost.get("note_card")?.cover || singlePost.get("cover");
     let imgList =
@@ -600,7 +606,7 @@ async function generatePost() {
 
       form.append("content", display_title || "");
       axios
-        .post("http://192.168.31.88:1337/post/creatdPost", form, {
+        .post("http://localhost:1337/post/byCreatdPost", form, {
           headers: {
             Authorization: sessionToken,
             ...form.getHeaders(), // 添加 FormData 的 headers
@@ -608,7 +614,6 @@ async function generatePost() {
         })
         .then((res) => {
           let postInfo = res.data.data;
-
           singlePost.set("postId", postInfo.id);
           singlePost
             .save(null, { useMasterKey: true })
@@ -642,6 +647,7 @@ async function generatePost() {
   }
   console.log("保存完毕post");
 }
+
 async function generatePostLike() {
   const redPostQuery = new Parse.Query("redBookPost");
   redPostQuery.limit(100000);
@@ -687,6 +693,7 @@ async function generatePostLike() {
   }
   console.log("同步完毕:", redPosts.length);
 }
+
 // 删除已同步的video帖子Post
 async function excludeTypeVideoPost() {
   const redPostQuery = new Parse.Query("redBookPost");
@@ -710,6 +717,7 @@ async function excludeTypeVideoPost() {
   }
   console.log("删除完毕:", redPosts.length);
 }
+
 async function setBelongIdPost() {
   const postQuery = new Parse.Query("Post");
   postQuery.limit(10000000000);
@@ -755,6 +763,7 @@ async function deleteNotOtherIdAdnNotPost() {
     }
   }
 }
+
 // 根据content 来关联帖子
 async function useContentSyncPostId() {
   const RedBookPost = Parse.Object.extend("redBookPost");
@@ -796,6 +805,7 @@ async function useContentSyncPostId() {
   console.log("视频video:", videoCount);
   console.log("未匹配:", notCount);
 }
+
 // 删除无content帖子
 async function deleteNotContentPost() {
   const postSql = new Parse.Query("Post");
@@ -821,6 +831,7 @@ async function deleteNotContentPost() {
     }
   }
 }
+
 // 删除type===video帖子
 async function deleteTypeVideoPost() {
   const query = new Parse.Query("redBookPost");
@@ -850,6 +861,7 @@ async function deleteTypeVideoPost() {
       console.error("查询失败:", error);
     });
 }
+
 async function downloadPostImg() {
   const redBookPostSql = new Parse.Query("redBookPost");
   redBookPostSql.exists("postId");
@@ -864,6 +876,7 @@ async function downloadPostImg() {
   }
 }
 
+// 删除指定用户的帖子
 async function existsAccountPost() {
   const postQuery = new Parse.Query("Post");
   postQuery.equalTo("creator", "cDH2qEKTsj");
@@ -891,72 +904,32 @@ async function existsAccountPost() {
   console.log("结束");
 }
 
-// setTimeout(() => setBelongIdPost(), 1000);
+const updateAvatar = async () => {
+  let imgKey = "avatar";
+  let queryKey = "User";
+  const userSql = new Parse.Query(queryKey);
+  let users = await userSql.findAll({ useMasterKey: true });
+  for (let index = 0; index < users.length; index++) {
+    const element = users[index];
+    let avatar = element.get(imgKey);
+    element.set(imgKey, avatar.split("/").pop());
+    await element.save(null, { useMasterKey: true });
+    console.log(index);
+  }
+};
 setTimeout(async () => {
-  // existsAccountPost();
+  // updateAvatar()
+  // console.log('start')
+  // await existsAccountPost();
   // await generateAccount();
   // await generateAvatar();
   // await generatePost();
   // await generatePostLike();
+  // console.log('end')
   // await deleteNotContentPost();
   // await deleteTypeVideoPost();
-  // const wallQuery = new Parse.Query("Wall");
-  // // wallQuery.limit(1);
-  // const walls = await wallQuery.findAll({ useMasterKey: true });
-  // for (let index = 0; index < walls.length; index++) {
-  //   const element = walls[index];
-  //   if (element.get("creator") && element.get("creator").length) continue;
-  //   let sourceId = element.get("sourceId");
-  //   const duiTangDataQuery = new Parse.Query("DuiTangData");
-  //   duiTangDataQuery.equalTo("_id", sourceId);
-  //   const sourceData = await duiTangDataQuery.first({ useMasterKey: true });
-  //   if (!sourceData) {
-  //     console.log("缺失s数据", element.id);
-  //     continue;
-  //   }
-  //   const sender = sourceData.get("sender");
-  //   if (!sender) {
-  //     console.log("缺失sender", sourceData.id);
-  //     continue;
-  //   }
-  //   const User = Parse.Object.extend("_User");
-  //   const userSql = new Parse.Query(User);
-  //   userSql.equalTo("otherId", String(sender.id));
-  //   const results = await userSql.first({ useMasterKey: true });
-  //   if (!results) {
-  //     let password = generatePassword();
-  //     let email = generateRandomEmail();
-  //     let query = {
-  //       email,
-  //       password,
-  //       avatar: sender.avatar,
-  //       source_id: sender.id,
-  //       username: sender.username,
-  //     };
-  //     const puser = new Parse.User();
-  //     puser.set("email", query.email);
-  //     puser.set("username", query.email);
-  //     puser.set("plainPassword", query.password);
-  //     puser.set("password", query.password);
-  //     puser.set("avatar", query.avatar);
-  //     puser.set("nickName", query.username);
-  //     puser.set("downloadFrequency", 0);
-  //     puser.set("otherId", String(query.source_id));
-  //     puser.set("source", "duitang");
-  //     const saveBefore = await puser.signUp(null, { useMasterKey: true });
-  //     element.set("username", query.username);
-  //     element.set("avatar", query.avatar);
-  //     element.set("creator", saveBefore.id);
-  //     await element.save(null, { useMasterKey: true });
-  //   } else {
-  //     element.set("username", results.get("nickname"));
-  //     element.set("avatar", results.get("avatar"));
-  //     element.set("creator", results.id);
-  //     await element.save(null, { useMasterKey: true });
-  //   }
-  //   console.log(index);
-  // }
 }, 1000);
+
 // setTimeout(() => excludeTypeVideoPost(), 1000);
 
 module.exports = Router;

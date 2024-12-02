@@ -1,5 +1,5 @@
 const fs = require("fs-extra");
-const { getTtemporaryImgLink } = require("./cos");
+const { getTtemporaryImgLink, getLocalImgLink } = require("./cos");
 const path = require("path");
 /**
  * 生成一个在 min 和 max 之间的随机整数
@@ -77,7 +77,8 @@ const withPostfindDetail = async (singlePost, currentUsreId) => {
     userWalls.push({
       id: walls[j].id,
       createdAt: walls[j].get("createdAt"),
-      url: getTtemporaryImgLink("images/" + walls[j].get("imageName")),
+      // url: getTtemporaryImgLink("images/" + walls[j].get("imageName")),
+      url: getLocalImgLink(walls[j].get("imageName")),
     });
   }
 
@@ -92,7 +93,7 @@ const withPostfindDetail = async (singlePost, currentUsreId) => {
     recommended: false,
     weight: singlePost.get("weight"),
     userInfo: {
-      avatar: singlePost.get("creatorAvatar"),
+      avatar: getLocalImgLink(singlePost.get("creatorAvatar"), "avatar"),
       username: singlePost.get("creatorName"),
       id: singlePost.get("creator"),
     },

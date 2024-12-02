@@ -25,7 +25,7 @@ Router.get("/download-apk", async (req, res) => {
     res.customErrorSend(err);
   }
 });
-Router.get("/download-apk-temp-token", async (req, res) => {
+Router.post("/download-apk-temp-token", async (req, res) => {
   const result = await getTempCosToken([
     {
       action: [
@@ -33,9 +33,7 @@ Router.get("/download-apk-temp-token", async (req, res) => {
         "name/cos:GetObject",
       ],
       effect: "allow",
-      resource: [
-        "qcs::cos:ap-tokyo:uid/1307889358:tokyo-1307889358/doc/app-release.apk",
-      ],
+      resource: ["qcs::cos:ap-tokyo:uid/1307889358:tokyo-1307889358/doc/*"],
     },
   ]);
   const data = JSON.parse(result);

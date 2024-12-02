@@ -7,6 +7,7 @@ const multer = require("multer");
 const path = require("path");
 const Joi = require("joi");
 const { validateParams } = require("../../utils/middlewares");
+const { getLocalImgLink } = require("../../utils/cos");
 const Router = express.Router();
 
 // 查询用户信息
@@ -25,14 +26,17 @@ Router.get("/info", async (req, res) => {
     const query = new Parse.Query(UserMilestone);
     query.equalTo("creatorId", userInfo.objectId);
     let milestone = (await query.first({ useMasterKey: true })) || {};
-    const milestoneInfo = milestone.toJSON();
-    delete milestoneInfo.createdAt;
-    delete milestoneInfo.updatedAt;
-    delete milestoneInfo.objectId;
-    delete milestoneInfo.creatorId;
+    const milestoneInfo = milestone?.objectId ? milestone.toJSON() : {};
+    if (milestoneInfo?.objectId) {
+      delete milestoneInfo.createdAt;
+      delete milestoneInfo.updatedAt;
+      delete milestoneInfo.objectId;
+      delete milestoneInfo.creatorId;
+    }
     res.customSend({
       ...userInfo,
       ...milestoneInfo,
+      avatar: getLocalImgLink(req.user.get("avatar"), "avatar"),
       last_login_at: req.user.get("last_login_at"),
     });
   } catch (error) {
@@ -63,7 +67,7 @@ Router.get("/keyword", async (req, res) => {
       let isFollow = await isFollowQuery.first({ useMasterKey: true });
 
       records.push({
-        avatar: item.get("avatar"),
+        avatar: getLocalImgLink(item.get("avatar"), "avatar"),
         id: item.id,
         nickname: item.get("nickName"),
         isFollow: !!isFollow,
@@ -150,7 +154,7 @@ Router.put(
   }).single("avatar"),
   async (req, res) => {
     try {
-      const fileUrl = `${process.env.DOMAINNAME}/avatar/${req.file.filename}`;
+      const fileUrl = `${req.file.filename}`;
       const currentUser = Parse.User.current();
       currentUser.set("avatar", fileUrl);
       await currentUser.save(null, { useMasterKey: true });
@@ -250,7 +254,7 @@ Router.get("/getUserImpact", async (req, res) => {
     // likes += await postLikeQuery.count({ useMasterKey: true });
     // }
     res.customSend({
-      avatar: user.get("avatar"),
+      avatar: getLocalImgLink(user.get("avatar"), "avatar"),
       motto: user.get("motto") || "",
       id: user.id,
       username: user.get("nickName"),
@@ -262,5 +266,49 @@ Router.get("/getUserImpact", async (req, res) => {
   } catch (error) {
     res.customErrorSend(error.message, error.code);
   }
+});
+
+Router.get("/getUserPostRanking", async (req, res) => {
+  const query = new Parse.Query("Post");
+
+  // 聚合管道
+  const pipeline = [
+    {
+      $group: {
+        _id: "$creator",
+        count: { $sum: 1 },
+      },
+    },
+    {
+      $sort: { count: -1 },
+    },
+    {
+      $limit: 20,
+    },
+    {
+      $project: {
+        userId: "$_id",
+        count: 1,
+        _id: 0,
+      },
+    },
+  ];
+
+  // 执行聚合查询
+  const results = await query.aggregate(pipeline, { useMasterKey: true });
+
+  let r = [];
+  for (let index = 0; index < results.length; index++) {
+    const element = results[index];
+    const query = new Parse.Query(Parse.User);
+    let item = await query.get(element.userId, { useMasterKey: true });
+    r.push({
+      avatar: getLocalImgLink(item.get("avatar"), "avatar"),
+      id: item.id,
+      count: element.count,
+      nickname: item.get("nickName"),
+    });
+  }
+  res.customSend(r);
 });
 module.exports = Router;

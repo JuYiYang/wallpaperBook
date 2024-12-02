@@ -1,5 +1,6 @@
 const express = require("express");
 const Parse = require("parse/node");
+const { getLocalImgLink } = require("../../utils/cos");
 const Router = express.Router();
 
 Router.put("/", async (req, res) => {
@@ -81,7 +82,7 @@ Router.get("/list", async (req, res) => {
       );
       let isFollow = await isFollowQuery.first({ useMasterKey: true });
       record.push({
-        avatar: singleUser.get("avatar"),
+        avatar: getLocalImgLink(singleUser.get("avatar"), "avatar"),
         motto: singleUser.get("motto") || "",
         id: singleUser.id,
         follow: !!isFollow,

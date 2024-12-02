@@ -4,7 +4,11 @@ const cos = new COS({
   SecretId: process.env.SecretId,
   SecretKey: process.env.SecretKey,
 });
-
+/**
+ * 发放Cos访问地址链接
+ * @param {String} key - 所在存储桶
+ * @returns {String} - 地址
+ */
 exports.getTtemporaryImgLink = (Key) => {
   return cos.getObjectUrl({
     Bucket: "tokyo-1307889358", // 填入您自己的存储桶，必须字段
@@ -13,6 +17,15 @@ exports.getTtemporaryImgLink = (Key) => {
     Sign: true,
     Expires: 3600, // 单位秒
   });
+};
+/**
+ * 发放本地访问链接
+ * @param {string} link - 图片名称
+ * @param {string?} key - 访问路径
+ * @returns {String} - 地址
+ */
+exports.getLocalImgLink = (link, key = "static") => {
+  return process.env.DOMAINNAME + `/${key}/${link}`;
 };
 /**
  * 发放Cos临时TOken

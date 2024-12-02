@@ -69,7 +69,6 @@ Router.get("/getMyLikePost", async (req, res) => {
     query.descending("createdAt");
     const record = await query.find({ useMasterKey: true });
     const total = await query.count({ useMasterKey: true });
-    console.log(record);
 
     let records = [];
     for (let i = 0; i < record.length; i++) {
