@@ -1,5 +1,6 @@
 const express = require("express");
 const fs = require("fs-extra");
+const dayjs = require("dayjs");
 const crypto = require("crypto");
 const path = require("path");
 const Joi = require("joi");
@@ -232,6 +233,7 @@ Router.get(
   ),
   async (req, res) => {
     try {
+      const start = dayjs(); // 开始时间
       // 计算跳过的记录数和限制返回的记录数
       const { page = 1, pageSize = 10 } = req.query;
 
@@ -276,7 +278,8 @@ Router.get(
         postRecords.push(await withPostfindDetail(postResult[i], req.user?.id));
       }
       const total = await postQuery.count();
-
+      const end = dayjs(); // 结束时间
+      const executionTimeMs = end.diff(start);
       res.customSend({
         nextPage: page * pageSize < total,
         isLogin,
@@ -284,6 +287,7 @@ Router.get(
           .sort((a, b) => b.weight - a.weight)
           .map(({ weight, ...rest }) => rest),
         total,
+        executionTimeMs,
       });
     } catch (error) {
       res.customErrorSend(error.message, error.code);
