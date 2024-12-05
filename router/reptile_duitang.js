@@ -317,7 +317,12 @@ Router.post("/redBook", async (req, res) => {
     }
     let afterInfo = await redBookPost.save(null, { useMasterKey: true });
 
-    console.log(item["note_card"]?.image_list ? "多图" : "保存", afterInfo.id);
+    console.log(
+      item["note_card"]?.image_list
+        ? "多图" + item["note_card"]?.image_list.length
+        : "保存",
+      afterInfo.id
+    );
   }
   res.customSend();
 });

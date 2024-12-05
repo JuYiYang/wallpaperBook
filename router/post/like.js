@@ -90,7 +90,10 @@ Router.get("/getMyLikePost", async (req, res) => {
         }
         continue;
       }
-      records.push(await withPostfindDetail(postInfo, req.user.id));
+      records.push({
+        ...(await withPostfindDetail(postInfo, req.user.id)),
+        postId: item.get("postId"),
+      });
     }
 
     res.customSend({

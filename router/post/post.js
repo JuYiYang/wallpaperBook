@@ -247,10 +247,6 @@ Router.get(
       postQuery.skip(isLogin ? skip : skip > 20 ? 20 : skip);
       postQuery.limit(parseInt(pageSize));
       postQuery.descending("createdAt");
-
-      // const queryDate = new Date(Date.UTC(2024, 8, 13, 16, 40)); // Note: Months are 0-indexed (8 = September)
-
-      // postQuery.greaterThan("createdAt", queryDate);
       if (req.query.userId) {
         postQuery.equalTo("creator", req.query.userId);
       } else {
@@ -264,12 +260,12 @@ Router.get(
             useMasterKey: true,
           }
         );
-
         postQuery.notContainedIn(
           "objectId",
           pageViewRecord.map((item) => item.objectId)
         );
       }
+
       const postResult = await postQuery.find({ useMasterKey: true }); // 按创建时间降序排序
 
       let postRecords = [];

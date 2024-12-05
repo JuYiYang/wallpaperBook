@@ -2,8 +2,12 @@ const express = require("express");
 require("dotenv").config();
 require("./router/scheduledTask");
 require("./utils/cos");
+const { getLocalIP } = require("./utils/utils");
 const app = express();
 
+if (process.env.NODE_ENV === "development") {
+  process.env.DOMAINNAME = `http://${getLocalIP()}:1337`;
+}
 const routes = require("./router/index");
 
 app.set("trust proxy", ["loopback", "192.168.0.0/24"]);

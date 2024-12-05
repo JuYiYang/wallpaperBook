@@ -1,26 +1,48 @@
 const express = require("express");
 const Router = express.Router();
+const fs = require("fs-extra");
 const path = require("path");
 const { getTempCosToken } = require("../../utils/cos");
 // 提供 APK 文件下载的路由
 Router.get("/download-apk", async (req, res) => {
-  res.setHeader("Content-Type", "application/vnd.android.package-archive");
-  res.setHeader(
-    "Content-Disposition",
-    'attachment; filename="wallpaperbook.apk"'
-  );
-  const apkPath = path.join(
-    "Y:",
-    "wall",
-    "wallpaperbook",
-    "build",
-    "app",
-    "outputs",
-    "flutter-apk",
-    "app-release.apk"
-  ); // APK 文件的实际路径
+  // APK 文件的实际路径
   try {
-    res.download(apkPath, "wallpaperbook.apk");
+    const apkPath = path.join(
+      "Y:",
+      "wall",
+      "wallpaperbook",
+      "build",
+      "app",
+      "outputs",
+      "flutter-apk",
+      "app-release.apk"
+    );
+    const apkV8a = path.join(
+      "Y:",
+      "wall",
+      "wallpaperbook",
+      "build",
+      "app",
+      "outputs",
+      "flutter-apk",
+      "app-arm64-v8a-release.apk"
+    );
+    let finalPath = "";
+    if (fs.existsSync(apkPath)) {
+      finalPath = apkPath;
+    }
+    if (fs.existsSync(apkV8a)) {
+      finalPath = apkV8a;
+    }
+    if (!finalPath.length) {
+      return res.customErrorSend();
+    }
+    res.setHeader("Content-Type", "application/vnd.android.package-archive");
+    res.setHeader(
+      "Content-Disposition",
+      'attachment; filename="wallpaperbook.apk"'
+    );
+    res.download(finalPath, "wallpaperbook.apk");
   } catch (err) {
     res.customErrorSend(err);
   }

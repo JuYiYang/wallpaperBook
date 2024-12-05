@@ -204,8 +204,36 @@ const calculateSimilarity = (str1, str2) => {
   return similarity;
 };
 
+const getLocalIP = () => {
+  let os = require("os");
+  const osType = os.type(); //系统类型
+  const netInfo = os.networkInterfaces(); //网络信息
+  let ip = "";
+  if (osType === "Windows_NT") {
+    for (let dev in netInfo) {
+      for (let j = 0; j < netInfo[dev].length; j++) {
+        if (netInfo[dev][j].family === "IPv4") {
+          if (netInfo[dev][j].address !== "127.0.0.1")
+            ip = netInfo[dev][j].address;
+          break;
+        }
+      }
+    }
+  } else if (osType === "Linux") {
+    ip = netInfo.eth0[0].address;
+  } else if (osType === "Darwin") {
+    // mac操作系统
+    // ip = netInfo.eth0[0].address;
+  } else {
+    // 其他操作系统
+  }
+
+  return ip;
+};
+
 module.exports = {
   getRandomIntInRange,
+  getLocalIP,
   getPostAdditionalValue,
   withPostfindDetail,
   delPostInfo,
