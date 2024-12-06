@@ -60,3 +60,35 @@ exports.validateParams = (schema) => {
     next();
   };
 };
+exports.logUserActivity = (req, res, next) => {
+  const deviceId = req.headers["uid"] || null;
+  const browserFingerprint = req.headers["browser-fingerprint"] || null;
+  const method = req.method;
+  const endpoint = req.originalUrl;
+  const queryParams = req.query;
+  const body = req.body;
+  const ip = req.headers["x-forwarded-for"] || req.connection.remoteAddress;
+
+  let obj = {
+    deviceId,
+    browserFingerprint,
+    method,
+    endpoint,
+    queryParams,
+    body,
+    ip,
+  };
+
+  const Log = Parse.Object.extend("Log");
+
+  // 创建一个新的 Log 实例
+  const log = new Log();
+  for (const key in obj) {
+    log.set(key, obj[key]);
+  }
+  log.save(null, { useMasterKey: true }).catch((err) => {
+    console.log("log 保存失败----", err, obj);
+  });
+
+  next();
+};

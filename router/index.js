@@ -8,6 +8,7 @@ const {
   responseMiddleware,
   crossDomainMiddlewar,
   authenticateMiddleware,
+  logUserActivity,
 } = require("../utils/middlewares");
 
 const Account = require("./account/account");
@@ -52,6 +53,8 @@ const api = new ParseServer(config);
 
 // 将 Parse API 挂载到 /parse 路径
 Router.use("/parse", api.app);
+
+Router.use(logUserActivity);
 
 Router.use("/account", Login);
 Router.use("/wall", Wall);

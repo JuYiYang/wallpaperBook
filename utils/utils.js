@@ -87,7 +87,7 @@ const withPostfindDetail = async (singlePost, currentUsreId) => {
     follow: !!follow,
     createdAt: singlePost.get("customCreatedAt") || singlePost.get("createdAt"),
     maxPostHeight: singlePost.get("maxPostHeight"),
-    content: content?.get("content"),
+    content: content?.get("content") || "",
     walls: userWalls,
     isLike: !!likes.length,
     recommended: false,

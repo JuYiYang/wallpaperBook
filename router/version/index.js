@@ -28,13 +28,12 @@ Router.get("/download-apk", async (req, res) => {
       "app-arm64-v8a-release.apk"
     );
     let finalPath = "";
+
     if (fs.existsSync(apkPath)) {
       finalPath = apkPath;
-    }
-    if (fs.existsSync(apkV8a)) {
+    } else if (fs.existsSync(apkV8a)) {
       finalPath = apkV8a;
-    }
-    if (!finalPath.length) {
+    } else {
       return res.customErrorSend();
     }
     res.setHeader("Content-Type", "application/vnd.android.package-archive");
@@ -72,7 +71,7 @@ Router.get("/checkVersion", (req, res) => {
   //   return res.customErrorSend();
   // }
 
-  const currentVersion = "1.0.12";
+  const currentVersion = "1.0.13";
 
   res.customSend(v === currentVersion);
 });

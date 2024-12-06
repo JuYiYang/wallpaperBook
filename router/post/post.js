@@ -301,7 +301,7 @@ Router.get(
   ),
   async (req, res) => {
     console.log("detail", req.query);
-
+    // return res.customErrorSend();
     try {
       const postQuery = new Parse.Query(Post);
       const singlePost = await postQuery.get(req.query.id);
