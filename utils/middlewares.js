@@ -21,28 +21,41 @@ exports.crossDomainMiddlewar = (req, res, next) => {
   next();
 };
 let notAuthPath = ["/getAllPost", "/browse"];
-// 身份验证中间件
-exports.authenticateMiddleware = (req, res, next) => {
-  const sessionToken = req.headers.authorization;
-  if (!sessionToken && !notAuthPath.includes(req.path)) {
-    return res.customErrorSend("Invalid session token", 401);
-  }
 
-  // 使用 session token 进行身份验证
+exports.auth = (req, res, next) => {
+  const sessionToken = req.headers.authorization;
+  req.user = null;
+  if (!sessionToken && !notAuthPath.includes(req.path)) {
+    next();
+    return;
+  }
   Parse.User.become(sessionToken)
     .then((user) => {
       // 身份验证成功
       req.user = user;
       next();
     })
-    .catch((error) => {
-      if (notAuthPath.includes(req.path)) {
-        next();
-        return;
-      }
-      // 身份验证失败
-      return res.customErrorSend("Invalid identity information", 401);
+    .catch((err) => {
+      next();
     });
+};
+// 身份验证中间件
+exports.authenticateMiddleware = (req, res, next) => {
+  const sessionToken = req.headers.authorization;
+  if (!sessionToken && !notAuthPath.includes(req.path)) {
+    return res.customErrorSend("Invalid session token", 401);
+  }
+  if (notAuthPath.includes(req.path)) {
+    next();
+    return;
+  }
+
+  if (req.user !== null) {
+    next();
+    return;
+  }
+
+  return res.customErrorSend("Invalid identity information", 401);
 };
 
 exports.validateParams = (schema) => {
@@ -60,6 +73,7 @@ exports.validateParams = (schema) => {
     next();
   };
 };
+
 exports.logUserActivity = (req, res, next) => {
   const deviceId = req.headers["uid"] || null;
   const browserFingerprint = req.headers["browser-fingerprint"] || null;
@@ -68,8 +82,9 @@ exports.logUserActivity = (req, res, next) => {
   const queryParams = req.query;
   const body = req.body;
   const ip = req.headers["x-forwarded-for"] || req.connection.remoteAddress;
-
+  const user = req?.user?.id;
   let obj = {
+    user,
     deviceId,
     browserFingerprint,
     method,
@@ -78,17 +93,15 @@ exports.logUserActivity = (req, res, next) => {
     body,
     ip,
   };
+  console.log(obj);
 
-  const Log = Parse.Object.extend("Log");
+  // const Log = Parse.Object.extend("Log");
+  // const log = new Log();
+  // log.save(null, { useMasterKey: true }).catch((err) => {
+  //   console.log("log 保存失败----", err, obj);
+  // });
 
   // 创建一个新的 Log 实例
-  const log = new Log();
-  for (const key in obj) {
-    log.set(key, obj[key]);
-  }
-  log.save(null, { useMasterKey: true }).catch((err) => {
-    console.log("log 保存失败----", err, obj);
-  });
 
   next();
 };
