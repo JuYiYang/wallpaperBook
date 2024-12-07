@@ -93,15 +93,15 @@ exports.logUserActivity = (req, res, next) => {
     body,
     ip,
   };
-  console.log(obj);
 
-  // const Log = Parse.Object.extend("Log");
-  // const log = new Log();
-  // log.save(null, { useMasterKey: true }).catch((err) => {
-  //   console.log("log 保存失败----", err, obj);
-  // });
-
-  // 创建一个新的 Log 实例
+  const Log = Parse.Object.extend("Log");
+  const log = new Log();
+  for (const key in obj) {
+    log.set(key, obj[key]);
+  }
+  log.save(null, { useMasterKey: true }).catch((err) => {
+    console.log("log 保存失败----", err, obj);
+  });
 
   next();
 };
