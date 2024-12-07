@@ -158,11 +158,13 @@ const updateUserInfo = async () => {
 };
 // cron.schedule("*/10 * * * *", updateWeight);
 // cron.schedule("0 0 2 * * *", updateUserInfo);
-cron.schedule("* * * * *", () => {
-  axios.get("https://clearidea.top/keepAlive").catch((err) => {
-    console.log("keepAlive Error");
+if (process.env.NODE_ENV != "development") {
+  cron.schedule("* * * * *", () => {
+    axios.get("https://clearidea.top/keepAlive").catch((err) => {
+      console.log("keepAlive Error");
+    });
   });
-});
+}
 
 // setTimeout(updateUserInfo, 1200);
 // setTimeout(updateWeight, 1200);
