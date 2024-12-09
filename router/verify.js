@@ -4,7 +4,7 @@ const dayjs = require("dayjs");
 const Router = express.Router();
 const { authenticateMiddleware } = require("../utils/middlewares");
 const { getTempCosToken } = require("../utils/cos");
-Router.get("/:token", async (req, res) => {
+Router.get("/tempLinkToken/:token", async (req, res) => {
   let token = req.params.token;
   try {
     if (!token || !token.length || token.length < 40) {

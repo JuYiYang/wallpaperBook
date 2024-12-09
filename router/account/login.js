@@ -136,7 +136,8 @@ Router.post(
       }
 
       let verifyToken = crypto.randomBytes(64).toString("hex");
-      let link = process.env.DOMAINNAME + "/verify/" + verifyToken;
+      let link =
+        process.env.DOMAINNAME + "/verify/tempLinkToken/" + verifyToken;
       await sendEmailVerifyLink(req.body.email, link);
       const VerifyEmail = Parse.Object.extend("VerifyEmail");
       const verifyEmail = new VerifyEmail();
