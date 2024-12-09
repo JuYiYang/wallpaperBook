@@ -101,4 +101,9 @@ Router.post("/tempUploadToken", authenticateMiddleware, async (req, res) => {
     res.customErrorSend(err);
   }
 });
+
+Router.get("/adRewards", async (req, res) => {
+  console.log(req.query, req.body, req.data);
+  res.customSend("Success");
+});
 module.exports = Router;

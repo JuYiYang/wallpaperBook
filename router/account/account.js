@@ -268,6 +268,7 @@ Router.get("/getUserImpact", async (req, res) => {
   }
 });
 
+// 用户发帖排行榜
 Router.get("/getUserPostRanking", async (req, res) => {
   const query = new Parse.Query("Post");
 
@@ -311,4 +312,16 @@ Router.get("/getUserPostRanking", async (req, res) => {
   }
   res.customSend(r);
 });
+
+Router.put("/updateAdEarnings", async (req, res) => {
+  let currentCount = req.user.get("downloadFrequency");
+  if (currentCount <= 0) {
+    res.customErrorSend({
+      status: 4,
+      msg: "您的下载次数不足！",
+    });
+  }
+  res.customSend(currentCount);
+});
+
 module.exports = Router;
