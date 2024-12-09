@@ -80,10 +80,10 @@ exports.logUserActivity = (req, res, next) => {
   const method = req.method;
   const endpoint = req.originalUrl;
 
-  // if (endpoint.includes(["keepAlive"])) {
-  //   next();
-  //   return;
-  // }
+  if (endpoint.includes(["keepAlive"])) {
+    next();
+    return;
+  }
   const queryParams = req.query;
   const body = req.body;
   const ip = req.headers["x-forwarded-for"] || req.connection.remoteAddress;

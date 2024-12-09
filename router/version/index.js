@@ -34,6 +34,7 @@ Router.get("/download-apk", async (req, res) => {
     } else if (fs.existsSync(apkV8a)) {
       finalPath = apkV8a;
     } else {
+      console.log("未匹配");
       return res.customErrorSend();
     }
     res.setHeader("Content-Type", "application/vnd.android.package-archive");
