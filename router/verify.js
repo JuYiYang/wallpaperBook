@@ -1,7 +1,9 @@
 const express = require("express");
 const dayjs = require("dayjs");
-
+const crypto = require("crypto");
 const Router = express.Router();
+const path = require("path");
+const fs = require("fs");
 const { authenticateMiddleware } = require("../utils/middlewares");
 const { getTempCosToken } = require("../utils/cos");
 Router.get("/tempLinkToken/:token", async (req, res) => {
@@ -103,7 +105,56 @@ Router.post("/tempUploadToken", authenticateMiddleware, async (req, res) => {
 });
 
 Router.get("/adRewards", async (req, res) => {
-  console.log(req.query, req.body, req.data);
-  res.customSend("Success");
+  try {
+    const {
+      ad_unit_id,
+      reward_type,
+      reward_amount,
+      user_id,
+      timestamp,
+      signature,
+      key_id: keyId,
+    } = req.query;
+    console.log(req.originalUrl, req.query);
+
+    // 验证时间戳
+    // const currentTime = Date.now();
+    // if (Math.abs(currentTime - timestamp) > 300000) {
+    //   // 5分钟以内
+    //   return res.customErrorSend();
+    // }
+    const publicKeyMap = JSON.parse(
+      fs.readFileSync(
+        path.join(__dirname, "../config/admob_public_keys.json"),
+        "utf8"
+      )
+    );
+    console.log(keyId, "keyId");
+
+    const publicKey = publicKeyMap[keyId];
+    if (!publicKey) {
+      return res.customErrorSend(`No public key found for keyId: ${keyId}`);
+    }
+    let data = "";
+    for (const key in req.query) {
+      const element = req.query[key];
+      data += `${key}:${element}`;
+    }
+
+    const isVerified = crypto.verify(
+      "sha256",
+      Buffer.from(data),
+      publicKey,
+      Buffer.from(signature, "base64")
+    );
+    console.log(isVerified, data);
+
+    res.customSend(isVerified);
+  } catch (err) {
+    console.log(err, "err");
+
+    res.customErrorSend(err);
+  }
 });
+
 module.exports = Router;

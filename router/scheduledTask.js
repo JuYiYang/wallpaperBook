@@ -1,5 +1,7 @@
 const cron = require("node-cron");
 const dayjs = require("dayjs");
+const path = require("path");
+const fs = require("fs-extra");
 const axios = require("axios");
 const updateWeight = async () => {
   let startTime = dayjs();
@@ -158,13 +160,48 @@ const updateUserInfo = async () => {
 };
 // cron.schedule("*/10 * * * *", updateWeight);
 // cron.schedule("0 0 2 * * *", updateUserInfo);
+
+const fetchAndSaveAdMobKeys = async () => {
+  try {
+    // 使用 Axios 获取公钥列表
+    const response = await axios.get(process.env.GOOGLEKEYSREQ);
+    const keyData = response.data;
+
+    // 检查数据结构是否有效
+    if (!keyData.keys || !Array.isArray(keyData.keys)) {
+      throw new Error("Invalid key data format");
+    }
+
+    // 解析公钥数据
+    const parsedKeys = keyData.keys.reduce((map, key) => {
+      map[key.keyId] = key.pem; // 创建一个 keyId 到公钥的映射
+      return map;
+    }, {});
+
+    // 将公钥映射保存为 JSON 文件
+    const jsonFilePath = path.join(
+      __dirname,
+      "../config/admob_public_keys.json"
+    );
+    fs.writeFileSync(jsonFilePath, JSON.stringify(parsedKeys, null, 2));
+
+    console.log(`AdMob public keys saved to ${jsonFilePath}`);
+  } catch (error) {
+    console.error("Failed to fetch or save AdMob keys:", error.message);
+  }
+};
 if (process.env.NODE_ENV != "development") {
   cron.schedule("* * * * *", () => {
     axios.get("https://clearidea.top/keepAlive").catch((err) => {
       console.log("keepAlive Error");
     });
   });
+  if (
+    !fs.existsSync(path.join(__dirname, "../config/admob_public_keys.json"))
+  ) {
+    fetchAndSaveAdMobKeys();
+  }
+  cron.schedule("0 0 * * *", fetchAndSaveAdMobKeys);
 }
-
 // setTimeout(updateUserInfo, 1200);
 // setTimeout(updateWeight, 1200);
