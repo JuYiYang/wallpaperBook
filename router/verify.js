@@ -106,22 +106,17 @@ Router.post("/tempUploadToken", authenticateMiddleware, async (req, res) => {
 
 Router.get("/adRewards", async (req, res) => {
   try {
-    const {
-      ad_unit_id,
-      reward_type,
-      reward_amount,
-      user_id,
-      timestamp,
-      signature,
-      key_id: keyId,
-    } = req.query;
-    console.log(req.originalUrl, req.query);
+    const { signature, key_id: keyId, user_id, timestamp } = req.query;
+
+    if (!user_id) {
+      return res.customErrorSend();
+    }
 
     // 验证时间戳
     // const currentTime = Date.now();
-    // if (Math.abs(currentTime - timestamp) > 300000) {
-    //   // 5分钟以内
-    //   return res.customErrorSend();
+    // if (Math.abs(currentTime - timestamp) > 600000) {
+    //   // 10分钟以内
+    //   return res.customErrorSend("过期");
     // }
     const publicKeyMap = JSON.parse(
       fs.readFileSync(
@@ -129,30 +124,38 @@ Router.get("/adRewards", async (req, res) => {
         "utf8"
       )
     );
-    console.log(keyId, "keyId");
 
     const publicKey = publicKeyMap[keyId];
     if (!publicKey) {
       return res.customErrorSend(`No public key found for keyId: ${keyId}`);
     }
     let data = "";
-    for (const key in req.query) {
-      const element = req.query[key];
-      data += `${key}:${element}`;
-    }
-
-    const isVerified = crypto.verify(
-      "sha256",
-      Buffer.from(data),
-      publicKey,
-      Buffer.from(signature, "base64")
+    const sortedKeys = Object.keys(req.query).filter(
+      (key) => !["signature", "key_id"].includes(key)
     );
-    console.log(isVerified, data);
+    // 排序
+    for (const key of sortedKeys) {
+      data += `${data.length ? "&" : ""}${key}=${req.query[key]}`;
+    }
+    const isVerified = crypto.verify(
+      "sha256", // 使用 SHA-256 作为哈希算法
+      Buffer.from(data, "utf-8"), // 将待验证数据转换为 Buffer
+      crypto.createPublicKey(publicKey), // 加载公钥
+      Buffer.from(signature, "base64") // 将签名转换为 Buffer
+    );
+    if (!isVerified) {
+      return res.customSend(isVerified);
+    }
+    const userQuery = new Parse.Query(Parse.User);
+    const user = await userQuery.get(user_id, {
+      useMasterKey: true,
+    });
+    user.set("downloadFrequency", user.get("downloadFrequency") + 1);
+    await user.save(null, { useMasterKey: true });
+    console.log(user.get("nickName"), "获得了广告收益");
 
-    res.customSend(isVerified);
+    res.customSend("success");
   } catch (err) {
-    console.log(err, "err");
-
     res.customErrorSend(err);
   }
 });
