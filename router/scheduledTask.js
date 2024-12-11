@@ -187,7 +187,7 @@ const fetchAndSaveAdMobKeys = async () => {
 
     console.log(`AdMob public keys saved to ${jsonFilePath}`);
   } catch (error) {
-    console.error("Failed to fetch or save AdMob keys:", error.message);
+    console.error("Failed to fetch or save AdMob keys:", error);
   }
 };
 if (process.env.NODE_ENV != "development") {
