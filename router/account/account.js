@@ -26,7 +26,7 @@ Router.get("/info", async (req, res) => {
     const query = new Parse.Query(UserMilestone);
     query.equalTo("creatorId", userInfo.objectId);
     let milestone = (await query.first({ useMasterKey: true })) || {};
-    const milestoneInfo = milestone?.objectId ? milestone.toJSON() : {};
+    const milestoneInfo = milestone?.id ? milestone.toJSON() : {};
     if (milestoneInfo?.objectId) {
       delete milestoneInfo.createdAt;
       delete milestoneInfo.updatedAt;
@@ -112,7 +112,7 @@ Router.put("/info", async (req, res) => {
     query
       .first({ useMasterKey: true })
       .then((info) => {
-        if (info.get("firstSetting")) return;
+        if (info?.get("firstSetting")) return;
         info.set("firstSetting", true);
         info.save(null, { useMasterKey: true }).catch((err) => {
           console.log("保存fristSetting失败", err);
