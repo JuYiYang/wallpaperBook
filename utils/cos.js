@@ -9,7 +9,7 @@ const cos = new COS({
  * @param {String} key - 所在存储桶
  * @returns {String} - 地址
  */
-exports.getTtemporaryImgLink = (Key) => {
+const getTtemporaryImgLink = (Key) => {
   return cos.getObjectUrl({
     Bucket: "tokyo-1307889358", // 填入您自己的存储桶，必须字段
     Region: "ap-tokyo",
@@ -24,8 +24,10 @@ exports.getTtemporaryImgLink = (Key) => {
  * @param {string?} key - 访问路径
  * @returns {String} - 地址
  */
-exports.getLocalImgLink = (link, key = "static") => {
-  return process.env.DOMAINNAME + `/${key}/${link}`;
+exports.getLocalImgLink = (link, key = "images") => {
+  return process.env.NODE_ENV === "development"
+    ? process.env.DOMAINNAME + `/${key}/${link}`
+    : getTtemporaryImgLink(key + "/" + link);
 };
 /**
  * 发放Cos临时TOken

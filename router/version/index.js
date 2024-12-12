@@ -5,7 +5,6 @@ const path = require("path");
 const { getTempCosToken } = require("../../utils/cos");
 // 提供 APK 文件下载的路由
 Router.get("/download-apk", async (req, res) => {
-  // APK 文件的实际路径
   try {
     const apkPath = path.join(
       "Y:",
@@ -42,6 +41,7 @@ Router.get("/download-apk", async (req, res) => {
       "Content-Disposition",
       'attachment; filename="wallpaperbook.apk"'
     );
+
     res.download(finalPath, "wallpaperbook.apk");
   } catch (err) {
     res.customErrorSend(err);
@@ -68,9 +68,9 @@ Router.post("/download-apk-temp-token", async (req, res) => {
 });
 Router.get("/checkVersion", (req, res) => {
   const v = req.query?.v;
-  // if (!v) {
-  //   return res.customErrorSend();
-  // }
+  if (!v) {
+    return res.customErrorSend();
+  }
 
   const currentVersion = "1.0.13";
 

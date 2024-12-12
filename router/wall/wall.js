@@ -106,8 +106,6 @@ Router.post("/downloadWall", authenticateMiddleware, async (req, res) => {
       },
     ]);
     const data = JSON.parse(result);
-    console.log(data);
-
     if (!data?.credentials) throw Error();
     res.customSend({
       expiredTime: data.expiredTime,

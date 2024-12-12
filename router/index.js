@@ -40,7 +40,7 @@ Router.use(responseMiddleware);
 Router.use(crossDomainMiddlewar);
 
 Router.use(
-  "/static",
+  "/images",
   express.static(path.join(__dirname, "../upload", "images"))
 );
 
