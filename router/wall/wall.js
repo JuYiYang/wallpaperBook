@@ -100,13 +100,24 @@ Router.post("/downloadWall", authenticateMiddleware, async (req, res) => {
         action: [
           //下载操作
           "name/cos:GetObject",
+          "name/cos:GetObjectTagging",
+          "name/cos:HeadObject",
+          "name/cos:ListJobs",
+          "name/cos:ListMultipartUploads",
+          "name/cos:ListParts",
         ],
         effect: "allow",
-        resource: ["qcs::cos:ap-tokyo:uid/1307889358:tokyo-1307889358/wall/*"],
+        resource: ["qcs::cos:ap-tokyo:uid/1307889358:tokyo-1307889358/*"],
       },
     ]);
     const data = JSON.parse(result);
     if (!data?.credentials) throw Error();
+    console.log({
+      expiredTime: data.expiredTime,
+      startTime: data.startTime,
+      ...data.credentials,
+    });
+
     res.customSend({
       expiredTime: data.expiredTime,
       startTime: data.startTime,
