@@ -196,7 +196,7 @@ Router.get("/getAllWall", async (req, res) => {
 // 浏览记录
 Router.put("/browse", authenticateMiddleware, async (req, res) => {
   if (!(req.body?.ids && req.body?.ids.length)) {
-    return res.customErrorSend("hello dev");
+    return res.customSend("hello dev");
   }
   try {
     let paramsIds = req.body.ids.split(",");
