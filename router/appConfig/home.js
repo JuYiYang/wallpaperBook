@@ -4,7 +4,7 @@ const Router = express.Router();
 // 获取轮播图配置
 Router.get("/slideshow", async (req, res) => {
   res.customSend({
-    type: "isLiner",
+    type: "isnLiner", // isLiner需要底部图片
     records: [
       // {
       //   id: "",
@@ -15,14 +15,14 @@ Router.get("/slideshow", async (req, res) => {
       {
         id: "",
         title: "",
-        bottomLiner: getLocalImgLink("beb10fa247eb3fb55821559eadd2c029.jpg"),
-        url: getLocalImgLink("%E6%9C%AA%E6%A0%87%E9%A2%98-2.png"),
+        url: getLocalImgLink("beb10fa247eb3fb55821559eadd2c029.jpg"),
+        bottomLiner: getLocalImgLink("%E6%9C%AA%E6%A0%87%E9%A2%98-2.png"),
       },
       {
         id: "",
         title: "",
-        bottomLiner: getLocalImgLink("0b4e851a33acc134fbb4a6e908093e35.jpg"),
-        url: getLocalImgLink("%E6%9C%AA%E6%A0%87%E9%A2%98-1.png"),
+        url: getLocalImgLink("0b4e851a33acc134fbb4a6e908093e35.jpg"),
+        bottomLiner: getLocalImgLink("%E6%9C%AA%E6%A0%87%E9%A2%98-1.png"),
       },
       //
     ],

@@ -20,6 +20,7 @@ const {
   getLocalImgLink,
   getTempCosToken,
 } = require("../../utils/cos");
+const dayjs = require("dayjs");
 const Router = express.Router();
 
 const Wall = Parse.Object.extend("Wall");
@@ -136,37 +137,66 @@ Router.post("/downloadWall", authenticateMiddleware, async (req, res) => {
 });
 
 Router.get("/getAllWall", async (req, res) => {
-  const { page = 1, pageSize = 10 } = req.query;
-  const wallQuery = new Parse.Query("Wall");
-
-  const skip = (page - 1) * pageSize;
-  wallQuery.skip(skip);
-  wallQuery.limit(parseInt(pageSize));
-  wallQuery.descending("createdAt");
-  const wallResult = await wallQuery.find({ useMasterKey: true });
-  let wallRecords = [];
-  let wallLength = wallResult.length;
-  for (let i = 0; i < wallLength; i++) {
-    let item = wallResult[i];
-    wallRecords.push({
-      id: item.id,
-      avatar: item.get("avatar"),
-      username: item.get("username"),
-      likeCount: 1000,
-      isLike: true,
-      frequency: item.get("frequency"),
-      url: item.get("sourcePath"),
+  try {
+    const { page = 1, pageSize = 10, type = "", keyword } = req.query;
+    const wallQuery = new Parse.Query("Wall");
+    const skip = (page - 1) * pageSize;
+    wallQuery.skip(skip);
+    if (keyword && keyword.length) {
+      const regex = new RegExp(keyword, "i"); // 正则表达式，"i" 表示不区分大小写
+      wallQuery.matches("keyword", regex);
+    } else {
+      const pageView = Parse.Object.extend("WallBrowseHistory");
+      const pageViewQuery = new Parse.Query(pageView);
+      pageViewQuery.equalTo("creatorId", req.user?.id);
+      let pageViewRecord = await pageViewQuery.aggregate(
+        { $group: { _id: "$wallId" } },
+        {
+          useMasterKey: true,
+        }
+      );
+      wallQuery.notContainedIn(
+        "objectId",
+        pageViewRecord.map((item) => item.objectId)
+      );
+    }
+    if (type && type.length) {
+      const regex = new RegExp(type, "i"); // 正则表达式，"i" 表示不区分大小写
+      wallQuery.matches("type", regex);
+    }
+    wallQuery.limit(parseInt(pageSize));
+    wallQuery.descending("createdAt");
+    wallQuery.descending("weight");
+    wallQuery.select("path");
+    const wallResult = await wallQuery.find({ useMasterKey: true });
+    let wallRecords = [];
+    let wallLength = wallResult.length;
+    for (let i = 0; i < wallLength; i++) {
+      let item = wallResult[i];
+      wallRecords.push({
+        id: item.id,
+        // avatar: item.get("avatar"),
+        // username: item.get("username"),
+        // likeCount: 1000,
+        // isLike: true,
+        // frequency: item.get("frequency"),
+        // name: item.get("path"),
+        isRecommend: false,
+        url: getLocalImgLink(item.get("path"), "wall"),
+      });
+    }
+    res.customSend({
+      records: wallRecords,
     });
+  } catch (error) {
+    res.customErrorSend(error?.message);
   }
-  res.customSend({
-    records: wallRecords,
-  });
 });
 
 // 浏览记录
-Router.put("/browse", async (req, res) => {
-  if (!req?.user || !req.body?.length) {
-    return res.customSend();
+Router.put("/browse", authenticateMiddleware, async (req, res) => {
+  if (!(req.body?.ids && req.body?.ids.length)) {
+    return res.customErrorSend("hello dev");
   }
   try {
     let paramsIds = req.body.ids.split(",");
@@ -195,13 +225,13 @@ Router.put("/browse", async (req, res) => {
 
     for (let i = 0; i < satisfactory.length; i++) {
       let item = satisfactory[i];
-      const browseHistory = new PostBrowseHistory();
+      const browseHistory = new WallBrowseHistory();
       browseHistory.set("creatorId", req.user.id);
       browseHistory.set("wallId", item);
       browseHistory
         .save(null, { useMasterKey: true })
         .catch((err) =>
-          console.log("browseWallHistorySave ", userId, item, err)
+          console.log("browsewallHistorySave ", userId, item, err)
         );
     }
 
@@ -210,5 +240,4 @@ Router.put("/browse", async (req, res) => {
     res.customErrorSend(error.message, error.code);
   }
 });
-
 module.exports = Router;

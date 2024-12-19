@@ -44,6 +44,7 @@ Router.use(
   express.static(path.join(__dirname, "../upload", "images"))
 );
 
+Router.use("/wall", express.static(path.join("D:/wallNetwork")));
 Router.use(
   "/avatar",
   express.static(path.join(__dirname, "../upload", "avatar"))

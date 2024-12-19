@@ -35,7 +35,7 @@ const keyWords = [
 let timer;
 const Wall = Parse.Object.extend("Wall");
 const uploadDir = path.join(__dirname, "../upload", "network");
-const { delPostInfo } = require("../utils/utils");
+const { delPostInfo, getRandomIntInRange } = require("../utils/utils");
 const { useMasterKey } = require("parse-server/lib/cloud-code/Parse.Cloud");
 const { query } = require("express");
 const reqDuiTangData = async (query, sendEvent, current) => {
@@ -922,7 +922,32 @@ const updateAvatar = async () => {
     console.log(index);
   }
 };
+
+// 同步信息duitang msg
+const syncWallKeyword = async () => {
+  const wallQuery = new Parse.Query("Wall");
+  const wallResult = await wallQuery.findAll({ useMasterKey: true });
+  console.log(wallResult.length);
+
+  for (let index = 0; index < wallResult.length; index++) {
+    const element = wallResult[index];
+    // element.set("weigth", getRandomIntInRange(500, 2000));
+    const dtQuery = new Parse.Query("DuiTangData");
+    try {
+      const dt = await dtQuery.get(element.get("sourceId"), {
+        useMasterKey: true,
+      });
+      element.set("type", dt.get("msg"));
+      await element.save(null, { useMasterKey: true });
+      console.log(index);
+    } catch (error) {
+      console.error("Error fetching object:", error, element.id);
+    }
+  }
+};
+
 setTimeout(async () => {
+  // syncWallKeyword();
   // updateAvatar()
   // console.log('start')
   // await existsAccountPost();

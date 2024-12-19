@@ -24,11 +24,12 @@ let notAuthPath = ["/getAllPost", "/browse"];
 
 exports.auth = (req, res, next) => {
   const sessionToken = req.headers.authorization;
+
   req.user = null;
-  if (!sessionToken && !notAuthPath.includes(req.path)) {
-    next();
-    return;
-  }
+  // if (!sessionToken && !notAuthPath.includes(req.path)) {
+  //   next();
+  //   return;
+  // }
   Parse.User.become(sessionToken)
     .then((user) => {
       // 身份验证成功
