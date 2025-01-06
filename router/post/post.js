@@ -273,17 +273,18 @@ Router.get(
       for (let i = 0; i < postsLength; i++) {
         postRecords.push(await withPostfindDetail(postResult[i], req.user?.id));
       }
-      const total = await postQuery.count();
+      let total = 0;
+      req.query.userId ? (total = await postQuery.count()) : 3000;
       const end = dayjs(); // 结束时间
       const executionTimeMs = end.diff(start);
       res.customSend({
         nextPage: page * pageSize < total,
         isLogin,
+        total,
+        executionTimeMs,
         records: postRecords
           .sort((a, b) => b.weight - a.weight)
           .map(({ weight, ...rest }) => rest),
-        total,
-        executionTimeMs,
       });
     } catch (error) {
       res.customErrorSend(error.message, error.code);

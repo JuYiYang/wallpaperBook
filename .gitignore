@@ -68,4 +68,5 @@ node_modules/
 /upload
 
 /.idea
+/script
 /config/admob_public_keys.json
