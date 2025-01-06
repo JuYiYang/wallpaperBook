@@ -109,9 +109,14 @@ Router.put("/info", async (req, res) => {
     const UserMilestone = Parse.Object.extend("UserMilestone");
     const query = new Parse.Query(UserMilestone);
     query.equalTo("creatorId", req.user.id);
+
     query
       .first({ useMasterKey: true })
       .then((info) => {
+        if (!info) {
+          createdUserMilestone(req.user.id);
+          return;
+        }
         if (info?.get("firstSetting")) return;
         info.set("firstSetting", true);
         info.save(null, { useMasterKey: true }).catch((err) => {
@@ -323,5 +328,25 @@ Router.put("/updateAdEarnings", async (req, res) => {
   }
   res.customSend(currentCount);
 });
+// 创建里程碑表
+const createdUserMilestone = async (userId) => {
+  const UserMilestone = Parse.Object.extend("UserMilestone");
+  const query = new Parse.Query(UserMilestone);
+  query.equalTo("creatorId", userId);
+  const record = await query.find({ useMasterKey: true });
+  if (record.length) {
+    console.log(userId, "重复创建里程碑");
+    return;
+  }
+  const userMilestone = new UserMilestone();
+  userMilestone.set("creatorId", userId);
+  userMilestone.set("firstSetting", true);
+  userMilestone.set("firstPost", false);
+  userMilestone.set("firstComment", false);
+  userMilestone.set("firstCollect", false);
+  userMilestone
+    .save(null, { useMasterKey: true })
+    .catch((err) => console.log("UserMilestone ", userId, err));
+};
 
 module.exports = Router;
