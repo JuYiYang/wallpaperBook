@@ -34,10 +34,7 @@ const keyWords = [
 ];
 let timer;
 const Wall = Parse.Object.extend("Wall");
-const uploadDir = path.join(__dirname, "../upload", "network");
 const { delPostInfo, getRandomIntInRange } = require("../utils/utils");
-const { useMasterKey } = require("parse-server/lib/cloud-code/Parse.Cloud");
-const { query } = require("express");
 const reqDuiTangData = async (query, sendEvent, current) => {
   const ReptileRecord = Parse.Object.extend("ReptileRecord");
   const reptileRecord = new ReptileRecord();
@@ -173,7 +170,8 @@ const startKeywordRequests = async (current, sendEvent) => {
   }
 };
 Router.get("/downloadDuiTang", async (req, res) => {
-  const uploadDir = path.join("D:", "wallNetwork");
+  const uploadDir = path.join("D:/wallpaperbook__static/wallNetwork");
+
   let isClose = false;
   let current = 82221;
   res.setHeader("Content-Type", "text/event-stream");
@@ -392,7 +390,6 @@ async function generateAccount() {
   dtQuery.limit(total);
   const record = await dtQuery.find({ useMasterKey: true });
   const User = Parse.Object.extend("_User");
-  console.log(record.length);
 
   for (let i = 0; i < record.length; i++) {
     let item = record[i];
@@ -428,9 +425,6 @@ async function generateAccount() {
     };
     try {
       const puser = new Parse.User();
-      if (query.username === "啦啦八八") {
-        console.log(query.source_id, "---------------------", item.id);
-      }
       puser.set("email", query.email);
       puser.set("username", query.email);
       puser.set("plainPassword", query.password);
@@ -457,7 +451,7 @@ async function generateAvatar() {
   const total = await userSql.count({ useMasterKey: true });
   userSql.limit(total);
   const results = await userSql.find({ useMasterKey: true });
-  const uploadDir = path.join(__dirname, "../upload", "avatar");
+  const uploadDir = path.join("D:/wallpaperbook__static/avatar");
   fs.ensureDirSync(uploadDir);
   for (let i = 0; i < results.length; i++) {
     let item = results[i];
@@ -931,18 +925,18 @@ const syncWallKeyword = async () => {
 
   for (let index = 0; index < wallResult.length; index++) {
     const element = wallResult[index];
-    // element.set("weigth", getRandomIntInRange(500, 2000));
-    const dtQuery = new Parse.Query("DuiTangData");
-    try {
-      const dt = await dtQuery.get(element.get("sourceId"), {
-        useMasterKey: true,
-      });
-      element.set("type", dt.get("msg"));
-      await element.save(null, { useMasterKey: true });
-      console.log(index);
-    } catch (error) {
-      console.error("Error fetching object:", error, element.id);
-    }
+    element.set("weight", getRandomIntInRange(500, 2000));
+    // const dtQuery = new Parse.Query("DuiTangData");
+    // try {
+    //   const dt = await dtQuery.get(element.get("sourceId"), {
+    //     useMasterKey: true,
+    //   });
+    //   element.set("type", dt.get("msg"));
+    await element.save(null, { useMasterKey: true });
+    console.log(index);
+    // } catch (error) {
+    //   console.error("Error fetching object:", error, element.id);
+    // }
   }
 };
 

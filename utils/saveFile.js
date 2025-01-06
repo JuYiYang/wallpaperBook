@@ -5,7 +5,7 @@ const path = require("path");
 const uploadHandler = multer({
   storage: multer.diskStorage({
     destination: (req, file, cb) => {
-      const uploadDir = path.join(__dirname, "../upload", "images");
+      const uploadDir = path.join("D:/wallpaperbook__static/images");
       // 检查目录是否存在
       fs.ensureDirSync(uploadDir);
       // 目录存在或已成功创建，调用回调函数

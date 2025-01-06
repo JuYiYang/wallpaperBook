@@ -113,13 +113,9 @@ Router.post("/downloadWall", authenticateMiddleware, async (req, res) => {
     ]);
     const data = JSON.parse(result);
     if (!data?.credentials) throw Error();
-    console.log({
-      expiredTime: data.expiredTime,
-      startTime: data.startTime,
-      ...data.credentials,
-    });
 
     res.customSend({
+      path: wall.get("path"),
       expiredTime: data.expiredTime,
       startTime: data.startTime,
       ...data.credentials,
@@ -138,10 +134,11 @@ Router.post("/downloadWall", authenticateMiddleware, async (req, res) => {
 
 Router.get("/getAllWall", async (req, res) => {
   try {
+    const start = dayjs(); // 开始时间
     const { page = 1, pageSize = 10, type = "", keyword } = req.query;
     const wallQuery = new Parse.Query("Wall");
+    const isLogin = !!req.user;
     const skip = (page - 1) * pageSize;
-    wallQuery.skip(skip);
     if (keyword && keyword.length) {
       const regex = new RegExp(keyword, "i"); // 正则表达式，"i" 表示不区分大小写
       wallQuery.matches("keyword", regex);
@@ -160,6 +157,7 @@ Router.get("/getAllWall", async (req, res) => {
         pageViewRecord.map((item) => item.objectId)
       );
     }
+    wallQuery.skip(isLogin ? skip : skip > 20 ? 20 : skip);
     if (type && type.length) {
       const regex = new RegExp(type, "i"); // 正则表达式，"i" 表示不区分大小写
       wallQuery.matches("type", regex);
@@ -167,7 +165,7 @@ Router.get("/getAllWall", async (req, res) => {
     wallQuery.limit(parseInt(pageSize));
     wallQuery.descending("createdAt");
     wallQuery.descending("weight");
-    wallQuery.select("path");
+    wallQuery.select(["path", "weight"]);
     const wallResult = await wallQuery.find({ useMasterKey: true });
     let wallRecords = [];
     let wallLength = wallResult.length;
@@ -181,11 +179,19 @@ Router.get("/getAllWall", async (req, res) => {
         // isLike: true,
         // frequency: item.get("frequency"),
         // name: item.get("path"),
+        weight: item.get("weight"),
         isRecommend: false,
         url: getLocalImgLink(item.get("path"), "wall"),
       });
     }
+    const total = await wallQuery.count();
+    const end = dayjs(); // 结束时间
+    const executionTimeMs = end.diff(start);
     res.customSend({
+      isLogin,
+      // total,
+      executionTimeMs,
+      nextPage: page * pageSize < total,
       records: wallRecords,
     });
   } catch (error) {

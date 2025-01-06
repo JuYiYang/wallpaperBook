@@ -41,13 +41,16 @@ Router.use(crossDomainMiddlewar);
 
 Router.use(
   "/images",
-  express.static(path.join(__dirname, "../upload", "images"))
+  express.static(path.join("D:/wallpaperbook__static/images"))
 );
 
-Router.use("/wall", express.static(path.join("D:/wallNetwork")));
+Router.use(
+  "/wall",
+  express.static(path.join("D:/wallpaperbook__static/wallNetwork"))
+);
 Router.use(
   "/avatar",
-  express.static(path.join(__dirname, "../upload", "avatar"))
+  express.static(path.join("D:/wallpaperbook__static/avatar"))
 );
 config.databaseURI = process.env.DATABASEURL;
 const api = new ParseServer(config);
