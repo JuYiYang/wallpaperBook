@@ -273,8 +273,7 @@ Router.get(
       for (let i = 0; i < postsLength; i++) {
         postRecords.push(await withPostfindDetail(postResult[i], req.user?.id));
       }
-      let total = 0;
-      req.query.userId ? (total = await postQuery.count()) : 3000;
+      let total = req.query.userId ? await postQuery.count() : 3000;
       const end = dayjs(); // 结束时间
       const executionTimeMs = end.diff(start);
       res.customSend({
