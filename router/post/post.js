@@ -314,12 +314,14 @@ Router.get(
   ),
   async (req, res) => {
     console.log("detail", req.query);
-    // return res.customErrorSend();
     try {
       const postQuery = new Parse.Query(Post);
       const singlePost = await postQuery.get(req.query.id);
-      res.customSend(await withPostfindDetail(singlePost, req.user.id));
+      let records = await batchFetchDetails([singlePost], req.user.id);
+      res.customSend(records[0]);
     } catch (error) {
+      console.log(error);
+
       res.customErrorSend(error);
     }
   }

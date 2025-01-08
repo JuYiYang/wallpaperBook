@@ -105,7 +105,9 @@ const withPostfindDetail = async (singlePost, currentUserId) => {
  */
 const batchFetchDetails = async (posts, currentUserId) => {
   // 提取所有 wallId 和 contentId
-  const wallIds = [...new Set(posts.map((post) => post.get("wallId")).flat())];
+  const wallIds = [
+    ...new Set(posts.map((post) => post.get("wallId").split(",")).flat()),
+  ];
   const contentIds = [
     ...new Set(posts.map((post) => post.get("contentId")).filter(Boolean)),
   ];
