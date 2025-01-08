@@ -97,7 +97,90 @@ const withPostfindDetail = async (singlePost, currentUserId) => {
     commentCount: singlePost.get("commentCount") || 0,
   };
 };
+/**
+ * 根据posts信息查询关联的图文
+ * @param {Array} posts - 帖子集合
+ * @param {String?} currentUsreId - 用户id
+ * @returns {Object} - 整合后的post
+ */
+const batchFetchDetails = async (posts, currentUserId) => {
+  // 提取所有 wallId 和 contentId
+  const wallIds = [...new Set(posts.map((post) => post.get("wallId")).flat())];
+  const contentIds = [
+    ...new Set(posts.map((post) => post.get("contentId")).filter(Boolean)),
+  ];
 
+  // 批量查询
+  const wallQuery = new Parse.Query("PostWall");
+  wallQuery.containedIn("objectId", wallIds);
+  wallQuery.select("imageName", "createdAt", "objectId");
+  const allWalls = await wallQuery.find({ useMasterKey: true });
+
+  const contentQuery = new Parse.Query("PostContent");
+  contentQuery.containedIn("objectId", contentIds);
+  contentQuery.select("content");
+  const allContents = await contentQuery.find({ useMasterKey: true });
+
+  const postLikeQuery = new Parse.Query("PostLike");
+  postLikeQuery.containedIn(
+    "postId",
+    posts.map((post) => post.id)
+  );
+  postLikeQuery.equalTo("creatorId", currentUserId);
+  const allLikes = await postLikeQuery.find({ useMasterKey: true });
+
+  const followingQuery = new Parse.Query("Following");
+  followingQuery.equalTo("creatorId", currentUserId);
+  followingQuery.containedIn(
+    "followId",
+    posts.map((post) => post.get("creator"))
+  );
+  const allFollows = await followingQuery.find({ useMasterKey: true });
+
+  // 转换为 Map 提高访问速度
+  const wallMap = new Map(allWalls.map((wall) => [wall.id, wall]));
+  const contentMap = new Map(
+    allContents.map((content) => [content.id, content])
+  );
+  const likeSet = new Set(allLikes.map((like) => like.get("postId")));
+  const followSet = new Set(allFollows.map((follow) => follow.get("followId")));
+
+  // 构建返回结果
+  return posts.map((post) => {
+    const wallId = post.get("wallId") || "";
+    const contentId = post.get("contentId") || "";
+
+    return {
+      id: post.id,
+      follow: followSet.has(post.get("creator")),
+      createdAt: post.get("customCreatedAt") || post.get("createdAt"),
+      maxPostHeight: post.get("maxPostHeight"),
+      content: contentMap.get(contentId)?.get("content") || "",
+      walls: (wallId.split(",") || [])
+        .map((id) => {
+          const wall = wallMap.get(id);
+          return wall
+            ? {
+                id: wall.id,
+                createdAt: wall.get("createdAt"),
+                url: getLocalImgLink(wall.get("imageName")),
+              }
+            : null;
+        })
+        .filter(Boolean),
+      isLike: likeSet.has(post.id),
+      recommended: false,
+      weight: post.get("weight"),
+      userInfo: {
+        avatar: getLocalImgLink(post.get("creatorAvatar"), "avatar"),
+        username: post.get("creatorName"),
+        id: post.get("creator"),
+      },
+      likeCount: post.get("likeCount") || 0,
+      commentCount: post.get("commentCount") || 0,
+    };
+  });
+};
 /**
  * 根据postId删除所有有关信息
  * @param {String|Object} post - 帖子id
@@ -232,6 +315,7 @@ module.exports = {
   getLocalIP,
   getPostAdditionalValue,
   withPostfindDetail,
+  batchFetchDetails,
   delPostInfo,
   calculateSimilarity,
 };
