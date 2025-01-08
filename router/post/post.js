@@ -227,7 +227,7 @@ Router.get(
   "/getAllPost",
   validateParams(
     Joi.object({
-      pageSize: Joi.number().max(20),
+      pageSize: Joi.number().max(999999),
       page: Joi.number(),
     }).unknown()
   ),
@@ -265,25 +265,45 @@ Router.get(
           pageViewRecord.map((item) => item.objectId)
         );
       }
-
+      postQuery.select(
+        "commentCount",
+        "likeCount",
+        "creatorName",
+        "creatorAvatar",
+        "weight",
+        "maxPostHeight",
+        "customCreatedAt",
+        "creator",
+        "contentId",
+        "wallId"
+      );
+      console.time("postResult");
       const postResult = await postQuery.find({ useMasterKey: true }); // 按创建时间降序排序
-
+      console.timeEnd("postResult");
       let postRecords = [];
       let postsLength = postResult.length;
+
+      console.time("withPostfindDetail");
       for (let i = 0; i < postsLength; i++) {
         postRecords.push(await withPostfindDetail(postResult[i], req.user?.id));
       }
+      console.timeEnd("withPostfindDetail");
+      console.time("total");
       let total = req.query.userId ? await postQuery.count() : 3000;
       const end = dayjs(); // 结束时间
       const executionTimeMs = end.diff(start);
+      console.timeEnd("total", total);
       res.customSend({
         nextPage: page * pageSize < total,
         isLogin,
         total,
         executionTimeMs,
-        records: postRecords
-          .sort((a, b) => b.weight - a.weight)
-          .map(({ weight, ...rest }) => rest),
+        records:
+          0 == 0
+            ? []
+            : postRecords
+                .sort((a, b) => b.weight - a.weight)
+                .map(({ weight, ...rest }) => rest),
       });
     } catch (error) {
       res.customErrorSend(error.message, error.code);

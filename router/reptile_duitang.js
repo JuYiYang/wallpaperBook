@@ -940,6 +940,34 @@ const syncWallKeyword = async () => {
   }
 };
 
+const mergePostWallContent = async () => {
+  return;
+  console.log("mergePostWallContent");
+
+  const postWallQuery = new Parse.Query("PostWall");
+
+  const PostWallAll = await postWallQuery.findAll({ useMasterKey: true });
+  console.log(PostWallAll.length);
+  const postContentQuery = new Parse.Query("PostContent");
+
+  const PostContentAll = await postContentQuery.findAll({ useMasterKey: true });
+  console.log(PostContentAll.length);
+  let errList = [];
+
+  for (let index = 0; index < PostContentAll.length; index++) {
+    const item = PostContentAll[index];
+    let postId = item.get("belongId");
+    try {
+      const postQuery = new Parse.Query("Post");
+      let post = await postQuery.get(postId);
+      post.set("content", item.get("content"));
+      await post.save(null, { useMasterKey: true });
+    } catch (err) {
+      errList.push({ postId, index, id: item.id });
+    }
+  }
+  console.log("完毕", errList);
+};
 setTimeout(async () => {
   // syncWallKeyword();
   // updateAvatar()
@@ -952,6 +980,7 @@ setTimeout(async () => {
   // console.log('end')
   // await deleteNotContentPost();
   // await deleteTypeVideoPost();
+  // mergePostWallContent();
 }, 1000);
 
 // setTimeout(() => excludeTypeVideoPost(), 1000);

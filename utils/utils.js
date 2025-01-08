@@ -39,69 +39,65 @@ function getPostAdditionalValue(numImages, numWords) {
  * @param {String?} currentUsreId - 用户id
  * @returns {Object} - 整合后的post
  */
-const withPostfindDetail = async (singlePost, currentUsreId) => {
-  let wallId = singlePost.get("wallId") || "";
+const withPostfindDetail = async (singlePost, currentUserId) => {
+  // 提取必要的字段
+  const wallId = singlePost.get("wallId") || "";
+  const contentId = singlePost.get("contentId") || "";
+  const creatorId = singlePost.get("creator");
 
-  // 被点赞内容的 ID
-  let contentId = singlePost.get("contentId") || "";
-
-  // 图
+  // 构建查询
   const wallQuery = new Parse.Query("PostWall");
   wallQuery.containedIn("objectId", wallId.split(","));
+  wallQuery.select("imageName", "createdAt", "objectId");
 
-  // 文
   const contentQuery = new Parse.Query("PostContent");
   contentQuery.equalTo("objectId", contentId);
+  contentQuery.select("content");
 
-  // 当前用户是否点赞
   const postLikeQuery = new Parse.Query("PostLike");
-  postLikeQuery.equalTo("creatorId", currentUsreId);
+  postLikeQuery.equalTo("creatorId", currentUserId);
   postLikeQuery.equalTo("postId", singlePost.id);
+  postLikeQuery.select("objectId");
 
-  // 查询用户是否关注
   const followingQuery = new Parse.Query("Following");
-  followingQuery.equalTo("creatorId", currentUsreId);
-  followingQuery.equalTo("followId", singlePost.get("creator"));
+  followingQuery.equalTo("creatorId", currentUserId);
+  followingQuery.equalTo("followId", creatorId);
+  followingQuery.select("objectId");
+  // 并行查询
+  const [followResult, walls, content, likes] = await Promise.all([
+    followingQuery.first({ useMasterKey: true }),
+    wallQuery.find({ useMasterKey: true }),
+    contentQuery.first({ useMasterKey: true }),
+    postLikeQuery.find({ useMasterKey: true }),
+  ]);
 
-  // 查询用户是否关注
-  // const recommendedQuery = new Parse.Query("Following");
-  // followingQuery.equalTo("creatorId", currentUsreId);
-  // followingQuery.equalTo("followId", singlePost.get("creator"));
-
-  let follow = await followingQuery.first({ useMasterKey: true });
-  let content = await contentQuery.first({ useMasterKey: true });
-  let walls = await wallQuery.find({ useMasterKey: true });
-  let likes = await postLikeQuery.find({ useMasterKey: true });
-  let userWalls = [];
-  for (let j = 0; j < walls.length; j++) {
-    userWalls.push({
-      id: walls[j].id,
-      createdAt: walls[j].get("createdAt"),
-      // url: getTtemporaryImgLink("images/" + walls[j].get("imageName")),
-      url: getLocalImgLink(walls[j].get("imageName")),
-    });
-  }
-
+  // 处理墙数据
+  const userWalls = walls.map((wall) => ({
+    id: wall.id,
+    createdAt: wall.get("createdAt"),
+    url: getLocalImgLink(wall.get("imageName")),
+  }));
+  // 返回数据
   return {
     id: singlePost.id,
-    follow: !!follow,
+    follow: !!followResult,
     createdAt: singlePost.get("customCreatedAt") || singlePost.get("createdAt"),
-    maxPostHeight: singlePost.get("maxPostHeight"),
+    maxPostHeight: singlePost.get("maxPostHeight") || 0,
     content: content?.get("content") || "",
     walls: userWalls,
-    isLike: !!likes.length,
+    isLike: likes.length > 0,
     recommended: false,
-    weight: singlePost.get("weight"),
+    weight: singlePost.get("weight") || 0,
     userInfo: {
       avatar: getLocalImgLink(singlePost.get("creatorAvatar"), "avatar"),
-      username: singlePost.get("creatorName"),
-      id: singlePost.get("creator"),
+      username: singlePost.get("creatorName") || "Unknown",
+      id: creatorId,
     },
     likeCount: singlePost.get("likeCount") || 0,
-    // colletCount: Math.floor(Math.random() * 50 + 1),
     commentCount: singlePost.get("commentCount") || 0,
   };
 };
+
 /**
  * 根据postId删除所有有关信息
  * @param {String|Object} post - 帖子id

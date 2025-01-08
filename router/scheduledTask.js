@@ -158,6 +158,7 @@ const updateUserInfo = async () => {
     deduplicatedData[i].save(null, { useMaterKey: true });
   }
 };
+
 // cron.schedule("*/10 * * * *", updateWeight);
 // cron.schedule("0 0 2 * * *", updateUserInfo);
 
