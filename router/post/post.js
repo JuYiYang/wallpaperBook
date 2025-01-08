@@ -14,6 +14,7 @@ const { delPostInfo } = require("../../utils/utils");
 const {
   getPostAdditionalValue,
   withPostfindDetail,
+  batchFetchDetails,
 } = require("../../utils/utils");
 // 本地File创建帖子
 Router.post("/byCreatdPost", multiple, async (req, res) => {
@@ -277,33 +278,21 @@ Router.get(
         "contentId",
         "wallId"
       );
-      console.time("postResult");
       const postResult = await postQuery.find({ useMasterKey: true }); // 按创建时间降序排序
-      console.timeEnd("postResult");
-      let postRecords = [];
-      let postsLength = postResult.length;
-
       console.time("withPostfindDetail");
-      for (let i = 0; i < postsLength; i++) {
-        postRecords.push(await withPostfindDetail(postResult[i], req.user?.id));
-      }
-      console.timeEnd("withPostfindDetail");
-      console.time("total");
+      let postRecords = await batchFetchDetails(postResult, req.user?.id);
+
       let total = req.query.userId ? await postQuery.count() : 3000;
       const end = dayjs(); // 结束时间
       const executionTimeMs = end.diff(start);
-      console.timeEnd("total", total);
       res.customSend({
         nextPage: page * pageSize < total,
         isLogin,
         total,
         executionTimeMs,
-        records:
-          0 == 0
-            ? []
-            : postRecords
-                .sort((a, b) => b.weight - a.weight)
-                .map(({ weight, ...rest }) => rest),
+        records: postRecords
+          .sort((a, b) => b.weight - a.weight)
+          .map(({ weight, ...rest }) => rest),
       });
     } catch (error) {
       res.customErrorSend(error.message, error.code);
@@ -347,10 +336,7 @@ Router.get("/myPost", async (req, res) => {
     postQuery.descending("createdAt");
     const postResult = await postQuery.find();
     const total = await postQuery.count({ useMasterKey: true });
-    let records = [];
-    for (let i = 0; i < postResult.length; i++) {
-      records.push(await withPostfindDetail(postResult[i], req.user.id));
-    }
+    let records = await batchFetchDetails(postResult, req.user.id);
     res.customSend({ records, nextPage: page * pageSize < total });
   } catch (error) {
     res.customErrorSend(error.message, error.code);
@@ -377,10 +363,7 @@ Router.get("/followPost", async (req, res) => {
     postQuery.descending("createdAt");
     const postResult = await postQuery.find();
     const total = await postQuery.count({ useMasterKey: true });
-    let records = [];
-    for (let i = 0; i < postResult.length; i++) {
-      records.push(await withPostfindDetail(postResult[i], req.user.id));
-    }
+    let records = await batchFetchDetails(postResult, req.user.id);
     res.customSend({ records, nextPage: page * pageSize < total });
   } catch (error) {
     res.customErrorSend(error.message, error.code);
@@ -472,11 +455,7 @@ Router.get(
       postQuery.descending("createdAt");
       postQuery.descending("weight");
       const posts = await postQuery.find({ useMasterKey: true });
-      for (let index = 0; index < posts.length; index++) {
-        const element = posts[index];
-        result.push(await withPostfindDetail(element, req.user.id));
-      }
-
+      result = await batchFetchDetails(posts, req.user.id);
       res.customSend({
         total: result.length,
         records: result,
