@@ -255,6 +255,7 @@ Router.get(
         const pageView = Parse.Object.extend("PostBrowseHistory");
         const pageViewQuery = new Parse.Query(pageView);
         pageViewQuery.equalTo("creatorId", req.user?.id);
+        pageViewQuery.select("objectId");
         let pageViewRecord = await pageViewQuery.aggregate(
           { $group: { _id: "$postId" } },
           {
@@ -279,10 +280,11 @@ Router.get(
         "wallId"
       );
       const postResult = await postQuery.find({ useMasterKey: true }); // 按创建时间降序排序
-      console.time("withPostfindDetail");
+
       let postRecords = await batchFetchDetails(postResult, req.user?.id);
 
       let total = req.query.userId ? await postQuery.count() : 3000;
+
       const end = dayjs(); // 结束时间
       const executionTimeMs = end.diff(start);
       res.customSend({
@@ -296,6 +298,8 @@ Router.get(
       });
     } catch (error) {
       res.customErrorSend(error.message, error.code);
+    } finally {
+      return;
     }
   }
 );
