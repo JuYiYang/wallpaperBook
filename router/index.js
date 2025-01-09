@@ -38,20 +38,21 @@ Router.use(bodyParser.json({ limit: "10mb" }));
 // 自定义中间件
 Router.use(responseMiddleware);
 Router.use(crossDomainMiddlewar);
+if (process.env.NODE_ENV === "development") {
+  Router.use(
+    "/images",
+    express.static(path.join("D:/wallpaperbook__static/images"))
+  );
 
-Router.use(
-  "/images",
-  express.static(path.join("D:/wallpaperbook__static/images"))
-);
-
-Router.use(
-  "/wall",
-  express.static(path.join("D:/wallpaperbook__static/wallNetwork"))
-);
-Router.use(
-  "/avatar",
-  express.static(path.join("D:/wallpaperbook__static/avatar"))
-);
+  Router.use(
+    "/wall",
+    express.static(path.join("D:/wallpaperbook__static/wallNetwork"))
+  );
+  Router.use(
+    "/avatar",
+    express.static(path.join("D:/wallpaperbook__static/avatar"))
+  );
+}
 config.databaseURI = process.env.DATABASEURL;
 const api = new ParseServer(config);
 (async () => await api.start())();
