@@ -97,7 +97,7 @@ Router.get("/", async (req, res) => {
   let html = "<ul>";
   files.forEach((file) => {
     let fileName = decrypt(file.get("fileName"));
-    html += `<li><a style="color:#0142f1;" href="/fiction/file/${file.id}">${fileName}</a></li>`;
+    html += `<li style="padding:10px 0;"><a style="color:#0142f1;" href="/fiction/file/${file.id}">${fileName}</a></li>`;
   });
   html += "</ul>";
   res.send(`
@@ -151,6 +151,7 @@ Router.get("/file/:fileId", async (req, res) => {
           white-space: pre-wrap;
           word-wrap: break-word;
           max-width: 100%;
+          font-size:18px;
           letter-spacing:0.5px;
           line-height: 28px;
           overflow-x: auto;
