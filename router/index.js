@@ -32,6 +32,8 @@ const Hot = require("./search/hot");
 
 const Version = require("./version");
 
+const Fiction = require("./other/fiction");
+
 const Router = express.Router();
 
 Router.use(bodyParser.json({ limit: "10mb" }));
@@ -61,6 +63,8 @@ const api = new ParseServer(config);
 Router.use("/parse", api.app);
 Router.use(auth);
 Router.use(logUserActivity);
+
+Router.use("/fiction", Fiction);
 Router.use("/account", Login);
 Router.use("/wall", Wall);
 Router.use("/version", Version);

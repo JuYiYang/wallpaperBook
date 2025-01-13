@@ -96,6 +96,7 @@ Router.put("/info", async (req, res) => {
     if (req.body["motto"] && req.body["motto"].length > 50) {
       return res.customErrorSend("设置的长度不应超过五十");
     }
+
     const currentUser = Parse.User.current();
     for (const key in req.body) {
       let val = req.body[key];
@@ -138,7 +139,7 @@ Router.put("/info", async (req, res) => {
   }
 });
 
-// 头像
+// 头像Local
 Router.put(
   "/updateAvatar",
   multer({

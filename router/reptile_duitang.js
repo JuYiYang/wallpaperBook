@@ -968,20 +968,20 @@ const mergePostWallContent = async () => {
   }
   console.log("完毕", errList);
 };
-setTimeout(async () => {
-  // syncWallKeyword();
-  // updateAvatar()
-  // console.log('start')
-  // await existsAccountPost();
-  // await generateAccount();
-  // await generateAvatar();
-  // await generatePost();
-  // await generatePostLike();
-  // console.log('end')
-  // await deleteNotContentPost();
-  // await deleteTypeVideoPost();
-  // mergePostWallContent();
-}, 1000);
+// setTimeout(async () => {
+// syncWallKeyword();
+// updateAvatar()
+// console.log('start')
+// await existsAccountPost();
+// await generateAccount();
+// await generateAvatar();
+// await generatePost();
+// await generatePostLike();
+// console.log('end')
+// await deleteNotContentPost();
+// await deleteTypeVideoPost();
+// mergePostWallContent();
+// }, 1000);
 
 // setTimeout(() => excludeTypeVideoPost(), 1000);
 
