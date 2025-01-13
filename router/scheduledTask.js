@@ -203,6 +203,7 @@ if (process.env.NODE_ENV != "development") {
     fetchAndSaveAdMobKeys();
   }
   cron.schedule("0 0 * * *", fetchAndSaveAdMobKeys);
+  cron.schedule("0 0,12 * * *");
 }
 // setTimeout(updateUserInfo, 1200);
 // setTimeout(updateWeight, 1200);
