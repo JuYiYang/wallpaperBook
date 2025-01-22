@@ -1,7 +1,7 @@
 const express = require("express");
 const Joi = require("joi");
 const { validateParams } = require("../../utils/middlewares");
-const { withPostfindDetail } = require("../../utils/utils");
+const { batchFetchDetails } = require("../../utils/utils");
 
 const Router = express.Router();
 
@@ -90,14 +90,14 @@ Router.get("/getMyLikePost", async (req, res) => {
         }
         continue;
       }
-      records.push({
-        ...(await withPostfindDetail(postInfo, req.user.id)),
-        postId: item.get("postId"),
-      });
+      records.push(postInfo);
     }
-
+    let finalRecords = await batchFetchDetails(records, userId);
     res.customSend({
-      records,
+      records: finalRecords.map((item) => {
+        item.postId = item.id;
+        return item;
+      }),
       total,
     });
   } catch (error) {

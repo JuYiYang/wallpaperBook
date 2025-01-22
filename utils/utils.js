@@ -105,6 +105,7 @@ const withPostfindDetail = async (singlePost, currentUserId) => {
  */
 const batchFetchDetails = async (posts, currentUserId) => {
   // 提取所有 wallId 和 contentId
+
   const wallIds = [
     ...new Set(posts.map((post) => post.get("wallId").split(",")).flat()),
   ];
@@ -116,7 +117,7 @@ const batchFetchDetails = async (posts, currentUserId) => {
   const wallQuery = new Parse.Query("PostWall");
   wallQuery.containedIn("objectId", wallIds);
   wallQuery.select("imageName", "createdAt", "objectId");
-  const allWalls = await wallQuery.find({ useMasterKey: true });
+  const allWalls = await wallQuery.findAll({ useMasterKey: true });
 
   const contentQuery = new Parse.Query("PostContent");
   contentQuery.containedIn("objectId", contentIds);
@@ -144,11 +145,12 @@ const batchFetchDetails = async (posts, currentUserId) => {
   const contentMap = new Map(
     allContents.map((content) => [content.id, content])
   );
+
   const likeSet = new Set(allLikes.map((like) => like.get("postId")));
   const followSet = new Set(allFollows.map((follow) => follow.get("followId")));
 
   // 构建返回结果
-  return posts.map((post) => {
+  let t = posts.map((post) => {
     const wallId = post.get("wallId") || "";
     const contentId = post.get("contentId") || "";
 
@@ -182,6 +184,30 @@ const batchFetchDetails = async (posts, currentUserId) => {
       commentCount: post.get("commentCount") || 0,
     };
   });
+  return t;
+  // if (wallIds.length > 10) {
+  console.warn("wallIds 超过 1000，建议分批查询", wallIds.length);
+  // }
+  try {
+    let a = t.filter((item) => item.walls.length <= 0);
+    console.log(a.length, "未查询到wall");
+    // a.forEach((item) => {
+    let wallIdas = [
+      ...new Set(
+        a.map((item) => {
+          let wa = posts.find((post) => post.id === item.id);
+
+          return wa.get("wallId").split(",").flat();
+        })
+      ),
+    ];
+    // console.log(item.id);
+    console.log(wallIdas, "-------");
+  } catch (err) {
+    console.log(err);
+  }
+  // });
+  return t;
 };
 /**
  * 根据postId删除所有有关信息

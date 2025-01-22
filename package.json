@@ -4,7 +4,7 @@
   "description": "this is a server",
   "main": "index.js",
   "scripts": {
-    "dev": "nodemon bin/ --ignore config/ --ignore scripts/",
+    "dev": "nodemon bin/ --ignore config/ --ignore script/",
     "dashboard": "parse-dashboard --config ./config/parse-dashboard-config.json"
   },
   "repository": {
